@@ -19,7 +19,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from xgboost import XGBRegressor
 
 from engine.utils.logger import get_logger
@@ -154,8 +154,41 @@ class ModelFinder:
                 # Metrics
                 r2 = float(r2_score(y_test, y_pred))
                 rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+                mae = float(mean_absolute_error(y_test, y_pred))
                 
-                self.logger.info(f"{name} performance - R2: {r2:.4f}, RMSE: {rmse:.4f}")
+                # Calculate MAPE only on non-zero target weights to avoid division by zero (bodyweight exercises)
+                nonZeroMask = y_test > 0
+                if nonZeroMask.any():
+                    mape = float(np.mean(np.abs((y_test[nonZeroMask] - y_pred[nonZeroMask]) / y_test[nonZeroMask])))
+                else:
+                    mape = 0.0
+                
+                self.logger.info(
+                    f"{name} performance - R2: {r2:.4f}, RMSE: {rmse:.4f}, MAE: {mae:.2f}, MAPE: {mape * 100.0:.2f}%"
+                )
+                
+                # Calculate error per exercise with average weight to check weight-error trends
+                evalDf = pd.DataFrame({
+                    "Name": X_test["Name"],
+                    "True_e1RM": y_test,
+                    "Abs_Error": np.abs(y_test - y_pred)
+                })
+                exerciseStats = evalDf.groupby("Name").agg(
+                    avgWeight=("True_e1RM", "mean"),
+                    mae=("Abs_Error", "mean")
+                ).reset_index()
+                
+                self.logger.info(f"{name} error breakdown by exercise (top 5 heaviest exercises):")
+                sortedStats = exerciseStats.sort_values(by="avgWeight", ascending=False)
+                for _, row in sortedStats.head(5).iterrows():
+                    self.logger.info(
+                        f"  - {row['Name']}: Avg Weight = {row['avgWeight']:.1f}, MAE = {row['mae']:.2f}"
+                    )
+                self.logger.info(f"{name} error breakdown by exercise (bottom 5 lightest exercises):")
+                for _, row in sortedStats.tail(5).iterrows():
+                    self.logger.info(
+                        f"  - {row['Name']}: Avg Weight = {row['avgWeight']:.1f}, MAE = {row['mae']:.2f}"
+                    )
                 
                 if r2 > best_score:
                     best_score = r2
