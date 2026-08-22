@@ -179,12 +179,13 @@ class ModelFinder:
                 ).reset_index()
                 
                 self.logger.info(f"{name} error breakdown by exercise (top 5 heaviest exercises):")
-                sortedStats = exerciseStats.sort_values(by="avgWeight", ascending=False)
+                nonZeroStats = exerciseStats[exerciseStats["avgWeight"] > 0]
+                sortedStats = nonZeroStats.sort_values(by="avgWeight", ascending=False)
                 for _, row in sortedStats.head(5).iterrows():
                     self.logger.info(
                         f"  - {row['Name']}: Avg Weight = {row['avgWeight']:.1f}, MAE = {row['mae']:.2f}"
                     )
-                self.logger.info(f"{name} error breakdown by exercise (bottom 5 lightest exercises):")
+                self.logger.info(f"{name} error breakdown by exercise (bottom 5 lightest exercises with weight):")
                 for _, row in sortedStats.tail(5).iterrows():
                     self.logger.info(
                         f"  - {row['Name']}: Avg Weight = {row['avgWeight']:.1f}, MAE = {row['mae']:.2f}"
