@@ -111,3 +111,8 @@ class DataLoader:
         except Exception as e:
             self.logger.error(f"Failed to load CSV from {filePath}: {e}", exc_info=True)
             return False
+
+if __name__ == "__main__":
+    loader = DataLoader()
+    loader.loadFromStrongCSV("../../data/strong_workouts.csv")
+    print(loader.getData())
