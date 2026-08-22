@@ -175,12 +175,10 @@ class ModelFinder:
 
 if __name__ == "__main__":
     # Demonstration of the ModelFinder
-    from engine.data.DataLoader import DataLoader
-    from engine.data.FeatureBuilder import FeatureBuilder
+    from engine.data.Pipeline import Pipeline as DataPipeline
     
-    # Load and build features using static methods
-    rawData = DataLoader.loadFromStrongCSV("data/strong_workouts.csv")
-    data = FeatureBuilder.buildFeatures(rawData)
+    # Load, clean, and engineer features using the integrated Pipeline
+    data = DataPipeline.run("data/strong_workouts.csv")
     
     finder = ModelFinder(target_column="e1RM")
     best_model = finder.find_best_model(data)
