@@ -114,5 +114,5 @@ class DataLoader:
 
 if __name__ == "__main__":
     loader = DataLoader()
-    loader.loadFromStrongCSV("../../data/strong_workouts.csv")
+    loader.loadFromStrongCSV("data/strong_workouts.csv")
     print(loader.getData())
