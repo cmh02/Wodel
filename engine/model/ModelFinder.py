@@ -178,30 +178,26 @@ if __name__ == "__main__":
     from engine.data.DataLoader import DataLoader
     from engine.data.FeatureBuilder import FeatureBuilder
     
-    loader = DataLoader()
-    if loader.loadFromStrongCSV("data/strong_workouts.csv"):
-        rawData = loader.getData()
-        if rawData is not None:
-            # Build features first
-            builder = FeatureBuilder()
-            data = builder.buildFeatures(rawData)
-            
-            finder = ModelFinder(target_column="e1RM")
-            best_model = finder.find_best_model(data)
-            
-            # Perform a test prediction
-            test_row = pd.DataFrame([{
-                "Name": "Romanian Deadlift (Barbell)",
-                "Set Order": "3",
-                "Distance": 0.0,
-                "e1RMLag1": 225.0,
-                "e1RMLag2": 220.0,
-                "e1RMLag3": 215.0,
-                "timeSinceLastWorkout": 2.0,
-                "timeSinceLastSameExercise": 7.0,
-                "exerciseOrderInWorkout": 2
-            }])
-            predicted_e1RM = best_model.predict(test_row)[0]
-            print(f"\n--- Demonstration Success ---")
-            print(f"Predicted e1RM for Romanian Deadlift (Barbell) (Set 3): {predicted_e1RM:.2f} lbs")
-            print(f"-----------------------------\n")
+    # Load and build features using static methods
+    rawData = DataLoader.loadFromStrongCSV("data/strong_workouts.csv")
+    data = FeatureBuilder.buildFeatures(rawData)
+    
+    finder = ModelFinder(target_column="e1RM")
+    best_model = finder.find_best_model(data)
+    
+    # Perform a test prediction
+    test_row = pd.DataFrame([{
+        "Name": "Romanian Deadlift (Barbell)",
+        "Set Order": "3",
+        "Distance": 0.0,
+        "e1RMLag1": 225.0,
+        "e1RMLag2": 220.0,
+        "e1RMLag3": 215.0,
+        "timeSinceLastWorkout": 2.0,
+        "timeSinceLastSameExercise": 7.0,
+        "exerciseOrderInWorkout": 2
+    }])
+    predicted_e1RM = best_model.predict(test_row)[0]
+    print(f"\n--- Demonstration Success ---")
+    print(f"Predicted e1RM for Romanian Deadlift (Barbell) (Set 3): {predicted_e1RM:.2f} lbs")
+    print(f"-----------------------------\n")

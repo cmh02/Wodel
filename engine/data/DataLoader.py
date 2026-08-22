@@ -5,7 +5,7 @@ Author: Chris Hinkson (@cmh02)
 The Data Loader module is responsible for parsing and loading data from a variety
 of sources. It provides a simple API for accessing and manipulating data.
 
-The loader coverts any data format into a single data format that can be used
+The loader converts any data format into a single data format that can be used
 within the rest of this service. This data format is a Pandas Dataset where each
 row is a single set of an exercise with the following columns:
 
@@ -22,63 +22,40 @@ import pandas as pd
 
 from engine.utils.logger import get_logger
 
+# Configure a module-level logger since this is a static utility class
+logger = get_logger(
+    name="DataLoader",
+    log_file="logs/wodle.log",
+    level=logging.DEBUG
+)
+
 class DataLoader:
     """ 
-    Wodel Data Loader
+    Wodel DataLoader
     
-    Initialize the data loader
+    Provides static methods to load and parse workout datasets.
     """
-    def __init__(self):
 
-        # Prepare data holder
-        self.data: pd.DataFrame | None = None
-
-        # Get logger
-        self.logger = get_logger(
-            name="DataLoader",
-            log_file="logs/wodle.log",
-            level=logging.DEBUG
-        )
-
-    def getData(self) -> pd.DataFrame | None:
-        """
-        Get Data
-
-        This helper provides an easy function-based way to obtain loaded data.
-        """
-        return self.data
-        
-    def loadFromStrongCSV(self, filePath: str) -> bool:
+    @staticmethod
+    def loadFromStrongCSV(filePath: str) -> pd.DataFrame:
         """
         Load Data - Strong App Format
 
-        This helper loads CSV data from the Strong App in the standard export format.
-        This format is expected to have the following column structure:
-        - Date
-        - Workout Name
-        - Duration
-        - Exercise Name
-        - Set Order
-        - Weight
-        - Reps
-        - Distance
-        - Seconds
-        - RPE
+        This helper loads CSV data from the Strong App in the standard export format
+        and parses it into the target schema.
 
         Args:
-            filePath: The path to the CSV file to load
+            filePath: The path to the CSV file to load.
 
         Returns:
-            bool: True if the file was loaded successfully, false otherwise
+            pd.DataFrame: The loaded and cleaned pandas DataFrame.
         """
-        self.logger.info(f"Attempting to load Strong CSV data from: {filePath}")
+        logger.info(f"Attempting to load Strong CSV data from: {filePath}")
         try:
             # Read CSV
             df = pd.read_csv(filePath)
             
             # Map required columns
-            # Source columns: Date, Exercise Name, Set Order, Weight, Reps, Distance
-            # Target columns: Time, Name, Set Order, Weight, Reps, Distance
             column_mapping = {
                 'Date': 'Time',
                 'Exercise Name': 'Name',
@@ -99,17 +76,9 @@ class DataLoader:
             # Convert Time to datetime
             df_cleaned['Time'] = pd.to_datetime(df_cleaned['Time'])
             
-            # Store in self.data
-            self.data = df_cleaned
-            
-            self.logger.info(f"Successfully loaded and parsed {len(df_cleaned)} rows of data.")
-            return True
+            logger.info(f"Successfully loaded and parsed {len(df_cleaned)} rows of data.")
+            return df_cleaned
             
         except Exception as e:
-            self.logger.error(f"Failed to load CSV from {filePath}: {e}", exc_info=True)
-            return False
-
-if __name__ == "__main__":
-    loader = DataLoader()
-    loader.loadFromStrongCSV("data/strong_workouts.csv")
-    print(loader.getData())
+            logger.error(f"Failed to load CSV from {filePath}: {e}", exc_info=True)
+            raise

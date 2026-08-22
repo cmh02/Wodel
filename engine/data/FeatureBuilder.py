@@ -11,26 +11,22 @@ import pandas as pd
 
 from engine.utils.logger import get_logger
 
+# Configure a module-level logger since this is a static utility class
+logger = get_logger(
+    name="FeatureBuilder",
+    log_file="logs/wodle.log",
+    level=logging.DEBUG
+)
+
 class FeatureBuilder:
     """
     Wodel FeatureBuilder
 
-    Initializes the feature builder and orchestrates the transformation pipeline on workout data.
+    Provides static methods to orchestrate the feature transformation pipeline on workout data.
     """
 
-    def __init__(self) -> None:
-        """
-        Initialize FeatureBuilder
-
-        Sets up the logger for tracing feature creation.
-        """
-        self.logger = get_logger(
-            name="FeatureBuilder",
-            log_file="logs/wodle.log",
-            level=logging.DEBUG
-        )
-
-    def buildFeatures(self, df: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def buildFeatures(df: pd.DataFrame) -> pd.DataFrame:
         """
         Build Features - Pipeline Execution
 
@@ -44,17 +40,17 @@ class FeatureBuilder:
         Returns:
             pd.DataFrame: The enriched DataFrame with new engineered features.
         """
-        self.logger.info("Starting feature engineering pipeline...")
+        logger.info("Starting feature engineering pipeline...")
         
         if df is None or df.empty:
-            self.logger.error("Input DataFrame is empty or None.")
+            logger.error("Input DataFrame is empty or None.")
             raise ValueError("Input DataFrame is empty or None.")
 
         # 1. Create a copy to prevent in-place modification of the original DataFrame
         engineeredDf = df.copy()
 
         # 2. Calculate e1RM using the Epley formula: e1RM = Weight * (1 + Reps / 30)
-        self.logger.info("Calculating Estimated 1-Rep Max (e1RM) using Epley formula...")
+        logger.info("Calculating Estimated 1-Rep Max (e1RM) using Epley formula...")
         engineeredDf["e1RM"] = engineeredDf["Weight"] * (1.0 + engineeredDf["Reps"] / 30.0)
         
         # Remove old Weight and Reps columns
@@ -64,7 +60,7 @@ class FeatureBuilder:
         engineeredDf["Date"] = engineeredDf["Time"].dt.date
 
         # 3. Calculate Session Lag Features (Lag1, Lag2, Lag3 max e1RM)
-        self.logger.info("Computing session-level lag features (Lag1, Lag2, Lag3)...")
+        logger.info("Computing session-level lag features (Lag1, Lag2, Lag3)...")
         
         # Find the max e1RM achieved for each exercise on each day
         sessionMax = (
@@ -91,7 +87,7 @@ class FeatureBuilder:
         )
 
         # 4. Calculate Time Indicators
-        self.logger.info("Generating time indicators...")
+        logger.info("Generating time indicators...")
 
         # Time since last workout (of any kind) in days
         uniqueTimes = pd.Series(engineeredDf["Time"].unique()).sort_values()
@@ -112,7 +108,7 @@ class FeatureBuilder:
         )
 
         # 5. Calculate Exercise Sequence Order in Workout
-        self.logger.info("Determining order of exercises within each workout session...")
+        logger.info("Determining order of exercises within each workout session...")
 
         def getExerciseOrder(group: pd.DataFrame) -> pd.Series:
             """Helper to calculate exercise ordering inside a session."""
@@ -131,32 +127,5 @@ class FeatureBuilder:
         # 6. Drop temporary columns
         engineeredDf = engineeredDf.drop(columns=["Date", "DateLag1"])
         
-        self.logger.info("Successfully completed feature engineering pipeline.")
+        logger.info("Successfully completed feature engineering pipeline.")
         return engineeredDf
-
-if __name__ == "__main__":
-    # Demonstration of the FeatureBuilder
-    from engine.data.DataLoader import DataLoader
-    
-    loader = DataLoader()
-    if loader.loadFromStrongCSV("data/strong_workouts.csv"):
-        rawData = loader.getData()
-        if rawData is not None:
-
-            pd.set_option("display.max_rows", None)
-
-            # Optional: also show all columns if they are getting truncated
-            pd.set_option("display.max_columns", None)
-
-            # Optional: prevent long text inside columns from being truncated
-            pd.set_option("display.max_colwidth", None)
-
-            builder = FeatureBuilder()
-            features = builder.buildFeatures(rawData)
-            
-            print("\n--- Demonstration Success ---")
-            print("First 10 rows of engineered dataset:")
-            print(features.tail(10))
-            print("\nColumns in new dataset:")
-            print(list(features.columns))
-            print("-----------------------------\n")
