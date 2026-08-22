@@ -10,7 +10,7 @@ import logging
 import sys
 import os
 
-def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.INFO) -> logging.Logger:
+def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBUG) -> logging.Logger:
     """
     Retrieves or creates a configured logger.
     
