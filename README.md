@@ -9,3 +9,7 @@ The problem with many existing services for machine learning and artificial inte
 To put it simply; if you were to ask any "science-based" strength-focused athlete for general advice or strategy, one of the most common responses you will find is that it "depends on the individual". While overall concepts and themes based in biomechanics can be applied to all humans, each individual will see different trends, improvements, abilities, recover standards, etc.
 
 Wodel seeks to fix this by taking the model to the user. Instead of asking the user to accept a general model not built for them, we build a model for each independent user. Additionally, we seek to do this in an interactive and performant manner, where the model is not reliant on a personal "quantum computer" to obtain insights on individual performance.
+
+## Getting Started & Contributing
+
+To set up your local development environment using `uv`, run tasks, or learn about our project coding standards, please check out the [Contributing Guide](file:///CONTRIBUTING.md).
