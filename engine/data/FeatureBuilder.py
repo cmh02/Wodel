@@ -46,25 +46,48 @@ class FeatureBuilder:
             logger.error("Input DataFrame is empty or None.")
             raise ValueError("Input DataFrame is empty or None.")
 
-        # 1. Create a copy to prevent in-place modification of the original DataFrame
+        # Create a copy to prevent in-place modification of the original DataFrame
         engineeredDf = df.copy()
 
-        # 2. Calculate e1RM using the Epley formula: e1RM = Weight * (1 + Reps / 30)
+        # Calculate e1RM using the Epley formula: e1RM = Weight * (1 + Reps / 30)
+        engineeredDf = FeatureBuilder._calculateE1RM(engineeredDf)
+
+        # Calculate Session Lag Features (Lag1, Lag2, Lag3 max e1RM)
+        engineeredDf = FeatureBuilder._calculateLagFeatures(engineeredDf)
+
+        # Calculate Time Indicators
+        engineeredDf = FeatureBuilder._calculateTimeIndicators(engineeredDf)
+
+        # Calculate Exercise Sequence Order in Workout
+        engineeredDf = FeatureBuilder._calculateExerciseOrder(engineeredDf)
+
+        # Drop temporary columns
+        engineeredDf = engineeredDf.drop(columns=["Date", "DateLag1"])
+        
+        logger.info("Successfully completed feature engineering pipeline.")
+        return engineeredDf
+
+    @staticmethod
+    def _calculateE1RM(df: pd.DataFrame) -> pd.DataFrame:
+        """Calculate e1RM using the Epley formula and set up the temporary Date column."""
         logger.info("Calculating Estimated 1-Rep Max (e1RM) using Epley formula...")
-        engineeredDf["e1RM"] = engineeredDf["Weight"] * (1.0 + engineeredDf["Reps"] / 30.0)
+        df["e1RM"] = df["Weight"] * (1.0 + df["Reps"] / 30.0)
         
         # Remove old Weight and Reps columns
-        engineeredDf = engineeredDf.drop(columns=["Weight", "Reps"])
+        df = df.drop(columns=["Weight", "Reps"])
 
         # Create a temporary Date column (date-only) for grouping sessions
-        engineeredDf["Date"] = engineeredDf["Time"].dt.date
+        df["Date"] = df["Time"].dt.date
+        return df
 
-        # 3. Calculate Session Lag Features (Lag1, Lag2, Lag3 max e1RM)
+    @staticmethod
+    def _calculateLagFeatures(df: pd.DataFrame) -> pd.DataFrame:
+        """Calculate Session Lag Features (Lag1, Lag2, Lag3 max e1RM)."""
         logger.info("Computing session-level lag features (Lag1, Lag2, Lag3)...")
         
         # Find the max e1RM achieved for each exercise on each day
         sessionMax = (
-            engineeredDf.groupby(["Name", "Date"])["e1RM"]
+            df.groupby(["Name", "Date"])["e1RM"]
             .max()
             .reset_index()
         )
@@ -79,18 +102,21 @@ class FeatureBuilder:
         sessionMax["DateLag1"] = sessionMax.groupby("Name")["Date"].shift(1)
 
         # Merge the computed lags back into the main DataFrame
-        engineeredDf = pd.merge(
-            engineeredDf,
+        df = pd.merge(
+            df,
             sessionMax[["Name", "Date", "e1RMLag1", "e1RMLag2", "e1RMLag3", "DateLag1"]],
             on=["Name", "Date"],
             how="left"
         )
+        return df
 
-        # 4. Calculate Time Indicators
+    @staticmethod
+    def _calculateTimeIndicators(df: pd.DataFrame) -> pd.DataFrame:
+        """Calculate time elapsed since last workout and last same exercise."""
         logger.info("Generating time indicators...")
 
         # Time since last workout (of any kind) in days
-        uniqueTimes = pd.Series(engineeredDf["Time"].unique()).sort_values()
+        uniqueTimes = pd.Series(df["Time"].unique()).sort_values()
         timeDiffs = uniqueTimes.diff()
         timeDiffsDays = timeDiffs.dt.total_seconds() / (24.0 * 3600.0)
         
@@ -98,16 +124,19 @@ class FeatureBuilder:
             "Time": uniqueTimes,
             "timeSinceLastWorkout": timeDiffsDays
         })
-        engineeredDf = pd.merge(engineeredDf, timeMapping, on="Time", how="left")
+        df = pd.merge(df, timeMapping, on="Time", how="left")
 
         # Time since last same exercise in days
-        engineeredDf["Date"] = pd.to_datetime(engineeredDf["Date"])
-        engineeredDf["DateLag1"] = pd.to_datetime(engineeredDf["DateLag1"])
-        engineeredDf["timeSinceLastSameExercise"] = (
-            (engineeredDf["Date"] - engineeredDf["DateLag1"]).dt.days
+        df["Date"] = pd.to_datetime(df["Date"])
+        df["DateLag1"] = pd.to_datetime(df["DateLag1"])
+        df["timeSinceLastSameExercise"] = (
+            (df["Date"] - df["DateLag1"]).dt.days
         )
+        return df
 
-        # 5. Calculate Exercise Sequence Order in Workout
+    @staticmethod
+    def _calculateExerciseOrder(df: pd.DataFrame) -> pd.DataFrame:
+        """Calculate Exercise Sequence Order in Workout."""
         logger.info("Determining order of exercises within each workout session...")
 
         def getExerciseOrder(group: pd.DataFrame) -> pd.Series:
@@ -119,13 +148,8 @@ class FeatureBuilder:
             nameToOrder = {name: i for i, name in enumerate(uniqueNames)}
             return group["Name"].map(nameToOrder)
 
-        engineeredDf["exerciseOrderInWorkout"] = (
-            engineeredDf.groupby("Time", group_keys=False)
+        df["exerciseOrderInWorkout"] = (
+            df.groupby("Time", group_keys=False)
             .apply(getExerciseOrder)
         )
-
-        # 6. Drop temporary columns
-        engineeredDf = engineeredDf.drop(columns=["Date", "DateLag1"])
-        
-        logger.info("Successfully completed feature engineering pipeline.")
-        return engineeredDf
+        return df
