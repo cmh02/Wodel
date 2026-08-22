@@ -44,9 +44,3 @@ Use `uv` commands to manage project requirements:
 * **Update the lockfile and sync**: `uv sync`
 
 ---
-
-## Coding Standards
-
-Please adhere to the coding guidelines defined in [STANDARDS.md](file:///.agents/STANDARDS.md):
-- **Naming Style**: Use `camelCase` for variable names, method names, and database column designations (e.g. `buildFeatures`, `timeSinceLastWorkout`).
-- **Layout & Headers**: Include the module header docstring (with Title and Author fields) and structured Google-style docstrings for classes, methods, and functions.

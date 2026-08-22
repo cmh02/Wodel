@@ -44,3 +44,14 @@ def my_function(self, param_name: str) -> bool:
         bool: True if the operation succeeded, False otherwise.
     """
 ```
+
+## 4. File Organization and Structure
+
+This project is a "flat-repo" such that each component is kept at the top-level. There are currently two main components:
+
+1. **`engine/`**: Contains all data preparation, cleaning, feature engineering, and modeling logic.
+   - **`engine/data/`**: Handles loading, filtering, and engineering steps (e.g., `DataLoader.py`, `DataCleaner.py`, `FeatureBuilder.py`, `Pipeline.py`).
+   - **`engine/model/`**: Handles model training and validation (e.g., `ModelFinder.py`).
+2. **`frontend/`**: Reserved for the user interface, plotting, and interactive visualization code.
+
+Additionally, data files and datasets should be placed in the top-level **`data/`** directory. All logs should be stored in the **`logs/`** directory. All AI-development-related files should be stored in the **`.agents/`** directory.
