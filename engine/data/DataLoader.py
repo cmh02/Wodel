@@ -24,7 +24,7 @@ from engine.utils.logger import get_logger
 
 class DataLoader:
     """ 
-    # Wodel Data Loader
+    Wodel Data Loader
     
     Initialize the data loader
     """
@@ -42,7 +42,7 @@ class DataLoader:
 
     def getData(self) -> pd.DataFrame | None:
         """
-        ## Get Data
+        Get Data
 
         This helper provides an easy function-based way to obtain loaded data.
         """
@@ -50,7 +50,7 @@ class DataLoader:
         
     def loadFromStrongCSV(self, filePath: str) -> bool:
         """
-        # Load Data - Strong App Format
+        Load Data - Strong App Format
 
         This helper loads CSV data from the Strong App in the standard export format.
         This format is expected to have the following column structure:
@@ -65,14 +65,11 @@ class DataLoader:
         - Seconds
         - RPE
 
-        ## Parameters
+        Args:
+            filePath: The path to the CSV file to load
 
-        - filePath (str): The path to the CSV file to load
-
-        ## Return
-
-        - True if the file was loaded successfully
-        - False if the file was not loaded successfully
+        Returns:
+            bool: True if the file was loaded successfully, false otherwise
         """
         self.logger.info(f"Attempting to load Strong CSV data from: {filePath}")
         try:
