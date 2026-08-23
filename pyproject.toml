@@ -20,3 +20,31 @@ package = false
 dev = [
     "ruff>=0.16.4",
 ]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes (unused imports, undefined variables)
+    "I",      # isort (automatic import sorting)
+    "UP",     # pyupgrade (updates older Python syntax automatically)
+    "B",      # flake8-bugbear (catches common design pitfalls and bugs)
+    "SIM",    # flake8-simplify (suggests cleaner syntax)
+    "D",      # pydocstyle (docstring conventions)
+]
+
+ignore = [
+    "D100",   # Missing docstring in public module
+    "D104",   # Missing docstring in public package
+    "D107",   # Missing docstring in __init__
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+docstring-code-format = true
