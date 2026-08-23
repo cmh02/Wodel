@@ -68,3 +68,11 @@ All code and file components in the project must adhere to the following naming 
   - Must be written in **`camelCase`** (e.g., `loadFromStrongCSV`, `removeAnyNaN`).
 - **Variable Names**:
   - Must be written in **`camelCase`** (e.g., `engineeredDf`, `finalCount`).
+
+## 6. Code Quality & Standards (Ruff)
+
+- We use **Ruff** to enforce formatting and code quality checks.
+- Before completing any code changes, always format the code and run the linter:
+  - **Check / Lint**: `uv run ruff check .`
+  - **Format**: `uv run ruff format .`
+- A GitHub Actions CI workflow runs these checks automatically on every push or pull request to the `main` branch. All code is expected to pass both checks before merge.

@@ -43,4 +43,12 @@ Use `uv` commands to manage project requirements:
 * **Remove a package**: `uv remove <package_name>`
 * **Update the lockfile and sync**: `uv sync`
 
+### Code Quality (Linting & Formatting)
+
+We use [Ruff](https://astral.sh/ruff/) to format and lint our code. Always check your changes before pushing:
+* **Run Linter**: `uv run ruff check .`
+* **Format Code**: `uv run ruff format .`
+
+A GitHub Actions CI workflow runs these checks automatically on every push and pull request to `main`.
+
 ---
