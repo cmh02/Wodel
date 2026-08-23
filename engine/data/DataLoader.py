@@ -27,7 +27,7 @@ This data format is a Pandas Dataset where each row is a single measurement
 with the following columns:
 
 - Time: DateTime of the measurement
-- Weight: The weight of the individual in lbs
+- Body Weight: The weight of the individual in lbs
 - BMI: Body Mass Index
 - Body Fat: Body fat percentage
 - Fat-Free Mass: Fat-free mass in lbs
@@ -130,7 +130,7 @@ class DataLoader:
             # Map required columns
             column_mapping = {
                 "Time of Measurement": "Time",
-                "Weight(lb)": "Weight",
+                "Weight(lb)": "Body Weight",
                 "BMI": "BMI",
                 "Body Fat(%)": "Body Fat",
                 "Fat-Free Mass(lb)": "Fat-Free Mass",
