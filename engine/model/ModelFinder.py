@@ -7,22 +7,28 @@ The Model Finder module prepares, trains, and evaluates multiple regression mode
 based on categorical and numerical features.
 """
 
+# Library Imports
 import logging
-from typing import Dict, Any
-
-import pandas as pd
+from typing import Any
 import numpy as np
-from sklearn.model_selection import train_test_split
+import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
+)
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 from xgboost import XGBRegressor
 
+# Internal Modules
 from engine.utils.logger import get_logger
+
 
 class ModelFinder:
     """
@@ -127,7 +133,7 @@ class ModelFinder:
         )
 
         # Define candidate model architectures
-        models: Dict[str, Any] = {
+        models: dict[str, Any] = {
             "LinearRegression": LinearRegression(),
             "XGBoost": XGBRegressor(n_estimators=100, random_state=42),
             "RandomForest": RandomForestRegressor(n_estimators=100, random_state=42)
@@ -230,6 +236,6 @@ if __name__ == "__main__":
         "exerciseOrderInWorkout": 2
     }])
     predicted_e1RM = best_model.predict(test_row)[0]
-    print(f"\n--- Demonstration Success ---")
+    print("\n--- Demonstration Success ---")
     print(f"Predicted e1RM for Romanian Deadlift (Barbell) (Set 3): {predicted_e1RM:.2f} lbs")
-    print(f"-----------------------------\n")
+    print("-----------------------------\n")

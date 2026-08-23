@@ -6,9 +6,11 @@ The Feature Builder module takes raw workout datasets and constructs advanced en
 features (e1RM, lags, elapsed times, and session sequence orders) to improve prediction models.
 """
 
+# Library Imports
 import logging
 import pandas as pd
 
+# Internal Modules
 from engine.utils.logger import get_logger
 
 # Configure a module-level logger since this is a static utility class

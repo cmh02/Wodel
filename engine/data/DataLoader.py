@@ -17,9 +17,11 @@ row is a single set of an exercise with the following columns:
 - Distance: The distance covered in the exercise if the exercise is distance-related
 """
 
+# Library Imports
 import logging
 import pandas as pd
 
+# Internal Modules
 from engine.utils.logger import get_logger
 
 # Configure a module-level logger since this is a static utility class
@@ -66,7 +68,7 @@ class DataLoader:
             }
             
             # Verify if expected columns exist
-            for src_col in column_mapping.keys():
+            for src_col in column_mapping:
                 if src_col not in df.columns:
                     raise KeyError(f"Expected column '{src_col}' not found in CSV.")
             

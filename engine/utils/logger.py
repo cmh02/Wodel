@@ -6,9 +6,11 @@ The Logger Utility provides a clean, central, and standardized logger for all
 logging that is completed in the Wodle Engine.
 """
 
-import logging
-import sys
+# Library Imports
 import os
+import sys
+import logging
+
 
 def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBUG) -> logging.Logger:
     """
