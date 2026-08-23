@@ -12,6 +12,7 @@ import logging
 import pandas as pd
 
 # Internal Modules
+from engine.data.DataAugmenter import DataAugmenter
 from engine.data.DataCleaner import DataCleaner
 from engine.data.DataLoader import DataLoader
 from engine.data.FeatureBuilder import FeatureBuilder
@@ -29,21 +30,23 @@ class Pipeline:
     """
 
     @staticmethod
-    def run(filePath: str) -> pd.DataFrame:
+    def run(filePath: str, biometricsFilePath: str = "data/renpho.csv") -> pd.DataFrame:
         """Run - Execute Data Pipeline
 
         Coordinates loading data from CSV, removing distance-based cardio exercises,
         building session-level features/lags, and removing any incomplete (NaN) records.
+        Additionally, loads biometrics data and augments the workout dataset.
 
         Args:
             filePath: The path to the CSV file to load and process.
+            biometricsFilePath: The path to the biometrics CSV file to load.
 
         Returns:
-            pd.DataFrame: The fully cleaned and engineered DataFrame ready for model fitting.
+            pd.DataFrame: The fully cleaned, engineered, and augmented DataFrame ready for model fitting.
         """
         logger.info(f"Starting data pipeline for: {filePath}")
 
-        # Load Data
+        # Load Workout Data
         rawData = DataLoader.loadFromStrongCSV(filePath)
 
         # Clean Cardio/Distance
@@ -53,7 +56,16 @@ class Pipeline:
         featuredData = FeatureBuilder.buildFeatures(strengthData)
 
         # Remove any rows with NaN values (e.g. initial lag NaNs)
-        finalData = DataCleaner.removeAnyNaN(featuredData)
+        cleanedData = DataCleaner.removeAnyNaN(featuredData)
 
-        logger.info(f"Data ipeline execution completed. Final row count: {len(finalData)}.")
+        # Load Biometrics Data
+        biometricsData = DataLoader.loadFromRenphoCSV(biometricsFilePath)
+
+        # Augment with Biometrics
+        augmentedData = DataAugmenter.augment(cleanedData, biometricsData)
+
+        # Remove any remaining NaN values resulting from augmentation (if any)
+        finalData = DataCleaner.removeAnyNaN(augmentedData)
+
+        logger.info(f"Data pipeline execution completed. Final row count: {len(finalData)}.")
         return finalData

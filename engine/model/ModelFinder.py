@@ -85,6 +85,19 @@ class ModelFinder:
             "timeSinceLastWorkout",
             "timeSinceLastSameExercise",
             "exerciseOrderInWorkout",
+            "Body Weight",
+            "BMI",
+            "Body Fat",
+            "Fat-Free Mass",
+            "Subcutaneous Fat",
+            "Visceral Fat",
+            "Body Water",
+            "Skeletal Muscle",
+            "Muscle Mass",
+            "Bone Mass",
+            "Protein",
+            "BMR",
+            "Metabolic Age",
         ]
         features = [col for col in candidate_features if col in df.columns and col != self.target_column]
 
@@ -218,7 +231,7 @@ if __name__ == "__main__":
     from engine.data.Pipeline import Pipeline as DataPipeline
 
     # Load, clean, and engineer features using the integrated Pipeline
-    data = DataPipeline.run("data/strong_workouts.csv")
+    data = DataPipeline.run("data/strong_workouts.csv", "data/renpho.csv")
 
     finder = ModelFinder(target_column="e1RM")
     best_model = finder.find_best_model(data)
@@ -236,6 +249,19 @@ if __name__ == "__main__":
                 "timeSinceLastWorkout": 2.0,
                 "timeSinceLastSameExercise": 7.0,
                 "exerciseOrderInWorkout": 2,
+                "Body Weight": 140.0,
+                "BMI": 23.0,
+                "Body Fat": 15.0,
+                "Fat-Free Mass": 119.0,
+                "Subcutaneous Fat": 13.0,
+                "Visceral Fat": 6.0,
+                "Body Water": 61.0,
+                "Skeletal Muscle": 55.0,
+                "Muscle Mass": 113.0,
+                "Bone Mass": 6.0,
+                "Protein": 19.0,
+                "BMR": 1540.0,
+                "Metabolic Age": 18.0,
             }
         ]
     )
