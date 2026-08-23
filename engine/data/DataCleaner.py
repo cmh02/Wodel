@@ -1,4 +1,5 @@
 """Wodle - Data Cleaner
+
 Author: Chris Hinkson (@cmh02)
 
 The Data Cleaner module provides utility static methods for cleaning workout datasets,

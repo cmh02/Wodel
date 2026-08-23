@@ -23,7 +23,7 @@ dev = [
 
 [tool.ruff]
 target-version = "py313"
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 select = [
@@ -38,6 +38,7 @@ select = [
 ]
 
 ignore = [
+    "D415",   # First line ending with punctuation
     "D100",   # Missing docstring in public module
     "D104",   # Missing docstring in public package
     "D107",   # Missing docstring in __init__

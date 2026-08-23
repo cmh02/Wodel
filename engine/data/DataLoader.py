@@ -1,4 +1,5 @@
 """Wodle - Data Loader
+
 Author: Chris Hinkson (@cmh02)
 
 The Data Loader module is responsible for parsing and loading data from a variety
@@ -32,9 +33,8 @@ logger = get_logger(
 )
 
 class DataLoader:
-    """ 
-    Wodel DataLoader
-    
+    """Wodel DataLoader
+
     Provides static methods to load and parse workout datasets.
     """
 

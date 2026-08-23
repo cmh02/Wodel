@@ -1,8 +1,10 @@
 """Wodle - Logger Utility
+
 Author: Chris Hinkson (@cmh02)
 
 The Logger Utility provides a clean, central, and standardized logger for all
 logging that is completed in the Wodle Engine.
+
 """
 
 # Library Imports
@@ -11,14 +13,20 @@ import os
 import sys
 
 
-def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBUG) -> logging.Logger:
-    """Retrieves or creates a configured logger.
-    
+def get_logger(
+    name: str,
+    log_file: str = "wodle.log",
+    level: int = logging.DEBUG
+) -> logging.Logger:
+    """Wodle - Get Logger
+
+    Retrieves or creates a configured logger.
+
     Args:
         name (str): The name of the module/logger (e.g., __name__).
         log_file (str): The destination file path for logs.
         level (int): The logging level (e.g., logging.INFO).
-        
+
     Returns:
         logging.Logger: A configured logger instance.
     """

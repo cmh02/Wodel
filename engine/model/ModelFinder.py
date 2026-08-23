@@ -1,4 +1,5 @@
 """Wodle - Model Finder
+
 Author: Chris Hinkson (@cmh02)
 
 The Model Finder module prepares, trains, and evaluates multiple regression models
@@ -181,17 +182,25 @@ class ModelFinder:
                     mae=("Abs_Error", "mean")
                 ).reset_index()
 
-                self.logger.info(f"{name} error breakdown by exercise (top 5 heaviest exercises):")
+                self.logger.info(
+                    f"{name} error breakdown by exercise (top 5 heaviest exercises):"
+                )
                 nonZeroStats = exerciseStats[exerciseStats["avgWeight"] > 0]
                 sortedStats = nonZeroStats.sort_values(by="avgWeight", ascending=False)
                 for _, row in sortedStats.head(5).iterrows():
                     self.logger.info(
-                        f"  - {row['Name']}: Avg Weight = {row['avgWeight']:.1f}, MAE = {row['mae']:.2f}"
+                        f"""  - {row['Name']}:
+                            Avg Weight = {row['avgWeight']:.1f},
+                            MAE = {row['mae']:.2f}"""
                     )
-                self.logger.info(f"{name} error breakdown by exercise (bottom 5 lightest exercises with weight):")
+                self.logger.info(
+                    f"""{name} error breakdown by exercise (bottom 5 lightest exercises with weight):"""
+                )
                 for _, row in sortedStats.tail(5).iterrows():
                     self.logger.info(
-                        f"  - {row['Name']}: Avg Weight = {row['avgWeight']:.1f}, MAE = {row['mae']:.2f}"
+                        f"""  - {row['Name']}:
+                            Avg Weight = {row['avgWeight']:.1f},
+                            MAE = {row['mae']:.2f}"""
                     )
 
                 if r2 > best_score:
@@ -206,7 +215,8 @@ class ModelFinder:
             raise RuntimeError("All models failed to train successfully.")
 
         self.logger.info(
-            f"Successfully determined best model: {best_model_name} with R2 Score of {best_score:.4f}"
+            f"""Successfully determined best model: {best_model_name}
+                with R2 Score of {best_score:.4f}"""
         )
         return best_pipeline
 
@@ -234,5 +244,6 @@ if __name__ == "__main__":
     }])
     predicted_e1RM = best_model.predict(test_row)[0]
     print("\n--- Demonstration Success ---")
-    print(f"Predicted e1RM for Romanian Deadlift (Barbell) (Set 3): {predicted_e1RM:.2f} lbs")
+    print(f"""Predicted e1RM for Romanian Deadlift (Barbell) (Set 3):
+            {predicted_e1RM:.2f} lbs""")
     print("-----------------------------\n")
