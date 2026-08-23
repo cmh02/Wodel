@@ -1,5 +1,4 @@
-"""
-Wodle - Model Finder
+"""Wodle - Model Finder
 Author: Chris Hinkson (@cmh02)
 
 The Model Finder module prepares, trains, and evaluates multiple regression models
@@ -32,16 +31,14 @@ from engine.utils.logger import get_logger
 
 
 class ModelFinder:
-    """
-    Wodel ModelFinder
+    """Wodel ModelFinder
 
     Prepares, trains, and evaluates multiple machine learning models on a workout dataset,
     identifying and returning the best model based on prediction accuracy (R-squared score).
     """
 
     def __init__(self, target_column: str = "e1RM") -> None:
-        """
-        Initialize ModelFinder
+        """Initialize ModelFinder
 
         Sets up the default target column and configures the logger.
 
@@ -56,8 +53,7 @@ class ModelFinder:
         )
 
     def find_best_model(self, df: pd.DataFrame) -> Pipeline:
-        """
-        Find Best Model - Train & Evaluate
+        """Find Best Model - Train & Evaluate
 
         Processes the input dataframe, splits it into training and testing sets,
         builds preprocessing and model pipelines, trains Linear Regression, XGBoost,
@@ -76,20 +72,20 @@ class ModelFinder:
         if df is None or df.empty:
             self.logger.error("Input DataFrame is empty or None.")
             raise ValueError("Input DataFrame is empty or None.")
-        
+
         if self.target_column not in df.columns:
             self.logger.error(f"Target column '{self.target_column}' not found in the DataFrame.")
             raise KeyError(f"Target column '{self.target_column}' not found in the DataFrame.")
 
         # Identify features (exclude target and datetime columns)
         candidate_features = [
-            "Name", "Set Order", "Distance", 
-            "e1RMLag1", "e1RMLag2", "e1RMLag3", 
-            "timeSinceLastWorkout", "timeSinceLastSameExercise", 
+            "Name", "Set Order", "Distance",
+            "e1RMLag1", "e1RMLag2", "e1RMLag3",
+            "timeSinceLastWorkout", "timeSinceLastSameExercise",
             "exerciseOrderInWorkout"
         ]
         features = [col for col in candidate_features if col in df.columns and col != self.target_column]
-        
+
         self.logger.info(f"Selected features for model training: {features}")
 
         # Segregate categorical and numerical features based on data type
@@ -105,20 +101,20 @@ class ModelFinder:
         transformers = []
         if categorical_features:
             transformers.append((
-                "cat", 
+                "cat",
                 Pipeline(steps=[
                     ("to_str", FunctionTransformer(lambda x: pd.DataFrame(x).astype(str), check_inverse=False)),
                     ("onehot", OneHotEncoder(handle_unknown="ignore"))
-                ]), 
+                ]),
                 categorical_features
             ))
         if numerical_features:
             transformers.append((
-                "num", 
+                "num",
                 Pipeline(steps=[
                     ("imputer", SimpleImputer(strategy="mean")),
                     ("scaler", StandardScaler())
-                ]), 
+                ]),
                 numerical_features
             ))
 
@@ -147,33 +143,33 @@ class ModelFinder:
         # Train and evaluate each model
         for name, model in models.items():
             self.logger.info(f"Training and evaluating: {name}")
-            
+
             # Package preprocessing and estimator inside a single pipeline
             pipeline = Pipeline(steps=[
                 ("preprocessor", preprocessor),
                 ("regressor", model)
             ])
-            
+
             try:
                 pipeline.fit(X_train, y_train)
                 y_pred = pipeline.predict(X_test)
-                
+
                 # Metrics
                 r2 = float(r2_score(y_test, y_pred))
                 rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
                 mae = float(mean_absolute_error(y_test, y_pred))
-                
+
                 # Calculate MAPE only on non-zero target weights to avoid division by zero (bodyweight exercises)
                 nonZeroMask = y_test > 0
                 if nonZeroMask.any():
                     mape = float(np.mean(np.abs((y_test[nonZeroMask] - y_pred[nonZeroMask]) / y_test[nonZeroMask])))
                 else:
                     mape = 0.0
-                
+
                 self.logger.info(
                     f"{name} performance - R2: {r2:.4f}, RMSE: {rmse:.4f}, MAE: {mae:.2f}, MAPE: {mape * 100.0:.2f}%"
                 )
-                
+
                 # Calculate error per exercise with average weight to check weight-error trends
                 evalDf = pd.DataFrame({
                     "Name": X_test["Name"],
@@ -184,7 +180,7 @@ class ModelFinder:
                     avgWeight=("True_e1RM", "mean"),
                     mae=("Abs_Error", "mean")
                 ).reset_index()
-                
+
                 self.logger.info(f"{name} error breakdown by exercise (top 5 heaviest exercises):")
                 nonZeroStats = exerciseStats[exerciseStats["avgWeight"] > 0]
                 sortedStats = nonZeroStats.sort_values(by="avgWeight", ascending=False)
@@ -197,12 +193,12 @@ class ModelFinder:
                     self.logger.info(
                         f"  - {row['Name']}: Avg Weight = {row['avgWeight']:.1f}, MAE = {row['mae']:.2f}"
                     )
-                
+
                 if r2 > best_score:
                     best_score = r2
                     best_pipeline = pipeline
                     best_model_name = name
-                    
+
             except Exception:
                 self.logger.exception(f"Error training {name}")
 
@@ -217,13 +213,13 @@ class ModelFinder:
 if __name__ == "__main__":
     # Demonstration of the ModelFinder
     from engine.data.Pipeline import Pipeline as DataPipeline
-    
+
     # Load, clean, and engineer features using the integrated Pipeline
     data = DataPipeline.run("data/strong_workouts.csv")
-    
+
     finder = ModelFinder(target_column="e1RM")
     best_model = finder.find_best_model(data)
-    
+
     # Perform a test prediction
     test_row = pd.DataFrame([{
         "Name": "Romanian Deadlift (Barbell)",

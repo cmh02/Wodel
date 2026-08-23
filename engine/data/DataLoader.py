@@ -1,5 +1,4 @@
-"""
-Wodle - Data Loader
+"""Wodle - Data Loader
 Author: Chris Hinkson (@cmh02)
 
 The Data Loader module is responsible for parsing and loading data from a variety
@@ -41,8 +40,7 @@ class DataLoader:
 
     @staticmethod
     def loadFromStrongCSV(filePath: str) -> pd.DataFrame:
-        """
-        Load Data - Strong App Format
+        """Load Data - Strong App Format
 
         This helper loads CSV data from the Strong App in the standard export format
         and parses it into the target schema.
@@ -57,7 +55,7 @@ class DataLoader:
         try:
             # Read CSV
             df = pd.read_csv(filePath)
-            
+
             # Map required columns
             column_mapping = {
                 'Date': 'Time',
@@ -67,21 +65,21 @@ class DataLoader:
                 'Reps': 'Reps',
                 'Distance': 'Distance'
             }
-            
+
             # Verify if expected columns exist
             for src_col in column_mapping:
                 if src_col not in df.columns:
                     raise KeyError(f"Expected column '{src_col}' not found in CSV.")
-            
+
             # Select and rename columns
             df_cleaned = df[list(column_mapping.keys())].rename(columns=column_mapping)
-            
+
             # Convert Time to datetime
             df_cleaned['Time'] = pd.to_datetime(df_cleaned['Time'])
-            
+
             logger.info(f"Successfully loaded and parsed {len(df_cleaned)} rows of data.")
             return df_cleaned
-            
+
         except Exception:
             logger.exception(f"Failed to load CSV from {filePath}!")
             raise

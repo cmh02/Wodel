@@ -1,5 +1,4 @@
-"""
-Wodle - Data Cleaner
+"""Wodle - Data Cleaner
 Author: Chris Hinkson (@cmh02)
 
 The Data Cleaner module provides utility static methods for cleaning workout datasets,
@@ -22,16 +21,14 @@ logger = get_logger(
 )
 
 class DataCleaner:
-    """
-    Wodel DataCleaner
+    """Wodel DataCleaner
 
     Provides static cleaning methods to prepare workout data for feature engineering.
     """
 
     @staticmethod
     def removeAnyNaN(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Remove Any NaN - Row Filtering
+        """Remove Any NaN - Row Filtering
 
         Filters out any rows from the DataFrame that contain one or more NaN (missing) values.
 
@@ -50,14 +47,13 @@ class DataCleaner:
         cleanedDf = df.dropna()
         finalCount = len(cleanedDf)
         removedCount = initialCount - finalCount
-        
+
         logger.info(f"Removed {removedCount} rows containing NaNs. Remaining rows: {finalCount}.")
         return cleanedDf
 
     @staticmethod
     def removeAnyDistance(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Remove Any Distance - Cardio Filtering
+        """Remove Any Distance - Cardio Filtering
 
         Filters out distance-based cardio exercises by removing any rows where the
         Distance metric is greater than 0.
@@ -78,6 +74,6 @@ class DataCleaner:
         cleanedDf = df[~(df["Distance"] > 0)]
         finalCount = len(cleanedDf)
         removedCount = initialCount - finalCount
-        
+
         logger.info(f"Removed {removedCount} rows with distance > 0. Remaining rows: {finalCount}.")
         return cleanedDf

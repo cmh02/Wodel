@@ -1,5 +1,4 @@
-"""
-Wodle - Feature Builder
+"""Wodle - Feature Builder
 Author: Chris Hinkson (@cmh02)
 
 The Feature Builder module takes raw workout datasets and constructs advanced engineered
@@ -22,16 +21,14 @@ logger = get_logger(
 )
 
 class FeatureBuilder:
-    """
-    Wodel FeatureBuilder
+    """Wodel FeatureBuilder
 
     Provides static methods to orchestrate the feature transformation pipeline on workout data.
     """
 
     @staticmethod
     def buildFeatures(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Build Features - Pipeline Execution
+        """Build Features - Pipeline Execution
 
         Orchestrates the creation of advanced features including Epley 1RM calculation,
         session-level lag features (Lag1, Lag2, Lag3), elapsed time indicators, and
@@ -44,7 +41,7 @@ class FeatureBuilder:
             pd.DataFrame: The enriched DataFrame with new engineered features.
         """
         logger.info("Starting feature engineering pipeline...")
-        
+
         if df is None or df.empty:
             logger.error("Input DataFrame is empty or None.")
             raise ValueError("Input DataFrame is empty or None.")
@@ -66,7 +63,7 @@ class FeatureBuilder:
 
         # Drop temporary columns
         engineeredDf = engineeredDf.drop(columns=["Date", "DateLag1"])
-        
+
         logger.info("Successfully completed feature engineering pipeline.")
         return engineeredDf
 
@@ -75,7 +72,7 @@ class FeatureBuilder:
         """Calculate e1RM using the Epley formula and set up the temporary Date column."""
         logger.info("Calculating Estimated 1-Rep Max (e1RM) using Epley formula...")
         df["e1RM"] = df["Weight"] * (1.0 + df["Reps"] / 30.0)
-        
+
         # Remove old Weight and Reps columns
         df = df.drop(columns=["Weight", "Reps"])
 
@@ -87,7 +84,7 @@ class FeatureBuilder:
     def _calculateLagFeatures(df: pd.DataFrame) -> pd.DataFrame:
         """Calculate Session Lag Features (Lag1, Lag2, Lag3 max e1RM)."""
         logger.info("Computing session-level lag features (Lag1, Lag2, Lag3)...")
-        
+
         # Find the max e1RM achieved for each exercise on each day
         sessionMax = (
             df.groupby(["Name", "Date"])["e1RM"]
@@ -122,7 +119,7 @@ class FeatureBuilder:
         uniqueTimes = pd.Series(df["Time"].unique()).sort_values()
         timeDiffs = uniqueTimes.diff()
         timeDiffsDays = timeDiffs.dt.total_seconds() / (24.0 * 3600.0)
-        
+
         timeMapping = pd.DataFrame({
             "Time": uniqueTimes,
             "timeSinceLastWorkout": timeDiffsDays

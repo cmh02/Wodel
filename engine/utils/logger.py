@@ -1,5 +1,4 @@
-"""
-Wodle - Logger Utility
+"""Wodle - Logger Utility
 Author: Chris Hinkson (@cmh02)
 
 The Logger Utility provides a clean, central, and standardized logger for all
@@ -13,8 +12,7 @@ import sys
 
 
 def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBUG) -> logging.Logger:
-    """
-    Retrieves or creates a configured logger.
+    """Retrieves or creates a configured logger.
     
     Args:
         name (str): The name of the module/logger (e.g., __name__).
@@ -24,7 +22,6 @@ def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBU
     Returns:
         logging.Logger: A configured logger instance.
     """
-
     # Grab the base logger and setup
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -49,7 +46,7 @@ def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBU
             log_dir = os.path.dirname(log_file)
             if log_dir and not os.path.exists(log_dir):
                 os.makedirs(log_dir, exist_ok=True)
-                
+
             file_handler = logging.FileHandler(log_file, encoding="utf-8")
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
