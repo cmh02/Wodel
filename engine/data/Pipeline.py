@@ -18,11 +18,8 @@ from engine.data.FeatureBuilder import FeatureBuilder
 from engine.utils.logger import get_logger
 
 # Configure a module-level logger since this is a static utility class
-logger = get_logger(
-    name="Pipeline",
-    log_file="logs/wodle.log",
-    level=logging.DEBUG
-)
+logger = get_logger(name="Pipeline", log_file="logs/wodle.log", level=logging.DEBUG)
+
 
 class Pipeline:
     """Wodel Pipeline

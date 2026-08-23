@@ -13,11 +13,7 @@ import os
 import sys
 
 
-def get_logger(
-    name: str,
-    log_file: str = "wodle.log",
-    level: int = logging.DEBUG
-) -> logging.Logger:
+def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBUG) -> logging.Logger:
     """Wodle - Get Logger
 
     Retrieves or creates a configured logger.
@@ -37,11 +33,9 @@ def get_logger(
 
     # Check if handlers have already been configured to prevent duplicates
     if not logger.handlers:
-
         # Format: [Timestamp] [Wodle] [ModuleName] [Level] <message>
         formatter = logging.Formatter(
-            fmt="[%(asctime)s] [Wodle] [%(name)s] [%(levelname)s] %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            fmt="[%(asctime)s] [Wodle] [%(name)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
 
         # Stdout/Console handler

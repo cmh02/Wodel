@@ -34,7 +34,7 @@ def my_function(self, param_name: str) -> bool:
     """
     Function Title - Specific Action
 
-    A detailed description of the function helper, what format it expects, 
+    A detailed description of the function helper, what format it expects,
     and any details on how it handles operations.
 
     Args:

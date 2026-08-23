@@ -26,11 +26,8 @@ import pandas as pd
 from engine.utils.logger import get_logger
 
 # Configure a module-level logger since this is a static utility class
-logger = get_logger(
-    name="DataLoader",
-    log_file="logs/wodle.log",
-    level=logging.DEBUG
-)
+logger = get_logger(name="DataLoader", log_file="logs/wodle.log", level=logging.DEBUG)
+
 
 class DataLoader:
     """Wodel DataLoader
@@ -58,12 +55,12 @@ class DataLoader:
 
             # Map required columns
             column_mapping = {
-                'Date': 'Time',
-                'Exercise Name': 'Name',
-                'Set Order': 'Set Order',
-                'Weight': 'Weight',
-                'Reps': 'Reps',
-                'Distance': 'Distance'
+                "Date": "Time",
+                "Exercise Name": "Name",
+                "Set Order": "Set Order",
+                "Weight": "Weight",
+                "Reps": "Reps",
+                "Distance": "Distance",
             }
 
             # Verify if expected columns exist
@@ -75,7 +72,7 @@ class DataLoader:
             df_cleaned = df[list(column_mapping.keys())].rename(columns=column_mapping)
 
             # Convert Time to datetime
-            df_cleaned['Time'] = pd.to_datetime(df_cleaned['Time'])
+            df_cleaned["Time"] = pd.to_datetime(df_cleaned["Time"])
 
             logger.info(f"Successfully loaded and parsed {len(df_cleaned)} rows of data.")
             return df_cleaned

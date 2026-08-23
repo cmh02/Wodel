@@ -15,11 +15,8 @@ import pandas as pd
 from engine.utils.logger import get_logger
 
 # Configure a module-level logger since this is a static utility class
-logger = get_logger(
-    name="FeatureBuilder",
-    log_file="logs/wodle.log",
-    level=logging.DEBUG
-)
+logger = get_logger(name="FeatureBuilder", log_file="logs/wodle.log", level=logging.DEBUG)
+
 
 class FeatureBuilder:
     """Wodel FeatureBuilder
@@ -87,11 +84,7 @@ class FeatureBuilder:
         logger.info("Computing session-level lag features (Lag1, Lag2, Lag3)...")
 
         # Find the max e1RM achieved for each exercise on each day
-        sessionMax = (
-            df.groupby(["Name", "Date"])["e1RM"]
-            .max()
-            .reset_index()
-        )
+        sessionMax = df.groupby(["Name", "Date"])["e1RM"].max().reset_index()
         sessionMax = sessionMax.sort_values(by=["Name", "Date"])
 
         # Shift the max e1RM values to find historical performance
@@ -107,7 +100,7 @@ class FeatureBuilder:
             df,
             sessionMax[["Name", "Date", "e1RMLag1", "e1RMLag2", "e1RMLag3", "DateLag1"]],
             on=["Name", "Date"],
-            how="left"
+            how="left",
         )
         return df
 
@@ -121,18 +114,13 @@ class FeatureBuilder:
         timeDiffs = uniqueTimes.diff()
         timeDiffsDays = timeDiffs.dt.total_seconds() / (24.0 * 3600.0)
 
-        timeMapping = pd.DataFrame({
-            "Time": uniqueTimes,
-            "timeSinceLastWorkout": timeDiffsDays
-        })
+        timeMapping = pd.DataFrame({"Time": uniqueTimes, "timeSinceLastWorkout": timeDiffsDays})
         df = pd.merge(df, timeMapping, on="Time", how="left")
 
         # Time since last same exercise in days
         df["Date"] = pd.to_datetime(df["Date"])
         df["DateLag1"] = pd.to_datetime(df["DateLag1"])
-        df["timeSinceLastSameExercise"] = (
-            (df["Date"] - df["DateLag1"]).dt.days
-        )
+        df["timeSinceLastSameExercise"] = (df["Date"] - df["DateLag1"]).dt.days
         return df
 
     @staticmethod
@@ -149,8 +137,5 @@ class FeatureBuilder:
             nameToOrder = {name: i for i, name in enumerate(uniqueNames)}
             return group["Name"].map(nameToOrder)
 
-        df["exerciseOrderInWorkout"] = (
-            df.groupby("Time", group_keys=False)
-            .apply(getExerciseOrder)
-        )
+        df["exerciseOrderInWorkout"] = df.groupby("Time", group_keys=False).apply(getExerciseOrder)
         return df

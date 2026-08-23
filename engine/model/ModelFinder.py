@@ -47,11 +47,7 @@ class ModelFinder:
             target_column: The name of the column to predict.
         """
         self.target_column = target_column
-        self.logger = get_logger(
-            name="ModelFinder",
-            log_file="logs/wodle.log",
-            level=logging.DEBUG
-        )
+        self.logger = get_logger(name="ModelFinder", log_file="logs/wodle.log", level=logging.DEBUG)
 
     def find_best_model(self, df: pd.DataFrame) -> Pipeline:
         """Find Best Model - Train & Evaluate
@@ -80,10 +76,15 @@ class ModelFinder:
 
         # Identify features (exclude target and datetime columns)
         candidate_features = [
-            "Name", "Set Order", "Distance",
-            "e1RMLag1", "e1RMLag2", "e1RMLag3",
-            "timeSinceLastWorkout", "timeSinceLastSameExercise",
-            "exerciseOrderInWorkout"
+            "Name",
+            "Set Order",
+            "Distance",
+            "e1RMLag1",
+            "e1RMLag2",
+            "e1RMLag3",
+            "timeSinceLastWorkout",
+            "timeSinceLastSameExercise",
+            "exerciseOrderInWorkout",
         ]
         features = [col for col in candidate_features if col in df.columns and col != self.target_column]
 
@@ -101,23 +102,26 @@ class ModelFinder:
         # Build the dynamic ColumnTransformer
         transformers = []
         if categorical_features:
-            transformers.append((
-                "cat",
-                Pipeline(steps=[
-                    ("to_str", FunctionTransformer(lambda x: pd.DataFrame(x).astype(str), check_inverse=False)),
-                    ("onehot", OneHotEncoder(handle_unknown="ignore"))
-                ]),
-                categorical_features
-            ))
+            transformers.append(
+                (
+                    "cat",
+                    Pipeline(
+                        steps=[
+                            ("to_str", FunctionTransformer(lambda x: pd.DataFrame(x).astype(str), check_inverse=False)),
+                            ("onehot", OneHotEncoder(handle_unknown="ignore")),
+                        ]
+                    ),
+                    categorical_features,
+                )
+            )
         if numerical_features:
-            transformers.append((
-                "num",
-                Pipeline(steps=[
-                    ("imputer", SimpleImputer(strategy="mean")),
-                    ("scaler", StandardScaler())
-                ]),
-                numerical_features
-            ))
+            transformers.append(
+                (
+                    "num",
+                    Pipeline(steps=[("imputer", SimpleImputer(strategy="mean")), ("scaler", StandardScaler())]),
+                    numerical_features,
+                )
+            )
 
         preprocessor = ColumnTransformer(transformers=transformers)
 
@@ -126,15 +130,13 @@ class ModelFinder:
         y = df[self.target_column]
 
         # Split into training and validation sets
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
         # Define candidate model architectures
         models: dict[str, Any] = {
             "LinearRegression": LinearRegression(),
             "XGBoost": XGBRegressor(n_estimators=100, random_state=42),
-            "RandomForest": RandomForestRegressor(n_estimators=100, random_state=42)
+            "RandomForest": RandomForestRegressor(n_estimators=100, random_state=42),
         }
 
         best_score = -float("inf")
@@ -146,10 +148,7 @@ class ModelFinder:
             self.logger.info(f"Training and evaluating: {name}")
 
             # Package preprocessing and estimator inside a single pipeline
-            pipeline = Pipeline(steps=[
-                ("preprocessor", preprocessor),
-                ("regressor", model)
-            ])
+            pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", model)])
 
             try:
                 pipeline.fit(X_train, y_train)
@@ -172,35 +171,28 @@ class ModelFinder:
                 )
 
                 # Calculate error per exercise with average weight to check weight-error trends
-                evalDf = pd.DataFrame({
-                    "Name": X_test["Name"],
-                    "True_e1RM": y_test,
-                    "Abs_Error": np.abs(y_test - y_pred)
-                })
-                exerciseStats = evalDf.groupby("Name").agg(
-                    avgWeight=("True_e1RM", "mean"),
-                    mae=("Abs_Error", "mean")
-                ).reset_index()
-
-                self.logger.info(
-                    f"{name} error breakdown by exercise (top 5 heaviest exercises):"
+                evalDf = pd.DataFrame(
+                    {"Name": X_test["Name"], "True_e1RM": y_test, "Abs_Error": np.abs(y_test - y_pred)}
                 )
+                exerciseStats = (
+                    evalDf.groupby("Name").agg(avgWeight=("True_e1RM", "mean"), mae=("Abs_Error", "mean")).reset_index()
+                )
+
+                self.logger.info(f"{name} error breakdown by exercise (top 5 heaviest exercises):")
                 nonZeroStats = exerciseStats[exerciseStats["avgWeight"] > 0]
                 sortedStats = nonZeroStats.sort_values(by="avgWeight", ascending=False)
                 for _, row in sortedStats.head(5).iterrows():
                     self.logger.info(
-                        f"""  - {row['Name']}:
-                            Avg Weight = {row['avgWeight']:.1f},
-                            MAE = {row['mae']:.2f}"""
+                        f"""  - {row["Name"]}:
+                            Avg Weight = {row["avgWeight"]:.1f},
+                            MAE = {row["mae"]:.2f}"""
                     )
-                self.logger.info(
-                    f"""{name} error breakdown by exercise (bottom 5 lightest exercises with weight):"""
-                )
+                self.logger.info(f"""{name} error breakdown by exercise (bottom 5 lightest exercises with weight):""")
                 for _, row in sortedStats.tail(5).iterrows():
                     self.logger.info(
-                        f"""  - {row['Name']}:
-                            Avg Weight = {row['avgWeight']:.1f},
-                            MAE = {row['mae']:.2f}"""
+                        f"""  - {row["Name"]}:
+                            Avg Weight = {row["avgWeight"]:.1f},
+                            MAE = {row["mae"]:.2f}"""
                     )
 
                 if r2 > best_score:
@@ -220,6 +212,7 @@ class ModelFinder:
         )
         return best_pipeline
 
+
 if __name__ == "__main__":
     # Demonstration of the ModelFinder
     from engine.data.Pipeline import Pipeline as DataPipeline
@@ -231,17 +224,21 @@ if __name__ == "__main__":
     best_model = finder.find_best_model(data)
 
     # Perform a test prediction
-    test_row = pd.DataFrame([{
-        "Name": "Romanian Deadlift (Barbell)",
-        "Set Order": "3",
-        "Distance": 0.0,
-        "e1RMLag1": 225.0,
-        "e1RMLag2": 220.0,
-        "e1RMLag3": 215.0,
-        "timeSinceLastWorkout": 2.0,
-        "timeSinceLastSameExercise": 7.0,
-        "exerciseOrderInWorkout": 2
-    }])
+    test_row = pd.DataFrame(
+        [
+            {
+                "Name": "Romanian Deadlift (Barbell)",
+                "Set Order": "3",
+                "Distance": 0.0,
+                "e1RMLag1": 225.0,
+                "e1RMLag2": 220.0,
+                "e1RMLag3": 215.0,
+                "timeSinceLastWorkout": 2.0,
+                "timeSinceLastSameExercise": 7.0,
+                "exerciseOrderInWorkout": 2,
+            }
+        ]
+    )
     predicted_e1RM = best_model.predict(test_row)[0]
     print("\n--- Demonstration Success ---")
     print(f"""Predicted e1RM for Romanian Deadlift (Barbell) (Set 3):
