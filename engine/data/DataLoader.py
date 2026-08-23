@@ -82,6 +82,6 @@ class DataLoader:
             logger.info(f"Successfully loaded and parsed {len(df_cleaned)} rows of data.")
             return df_cleaned
             
-        except Exception as e:
-            logger.error(f"Failed to load CSV from {filePath}: {e}", exc_info=True)
+        except Exception:
+            logger.exception(f"Failed to load CSV from {filePath}!")
             raise

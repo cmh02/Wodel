@@ -203,8 +203,8 @@ class ModelFinder:
                     best_pipeline = pipeline
                     best_model_name = name
                     
-            except Exception as e:
-                self.logger.error(f"Error training {name}: {e}", exc_info=True)
+            except Exception:
+                self.logger.exception(f"Error training {name}")
 
         if best_pipeline is None:
             raise RuntimeError("All models failed to train successfully.")
