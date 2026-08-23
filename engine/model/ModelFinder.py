@@ -49,13 +49,11 @@ class ModelFinder:
         self.target_column = target_column
         self.logger = get_logger(name="ModelFinder", log_file="logs/wodle.log", level=logging.DEBUG)
 
-    def find_best_model(self, df: pd.DataFrame) -> Pipeline:
-        """Find Best Model - Train & Evaluate
+    def findBestModel(self, df: pd.DataFrame) -> Pipeline:
+        """Find Best Model - Wrapper to Compare and Return Best Model
 
-        Processes the input dataframe, splits it into training and testing sets,
-        builds preprocessing and model pipelines, trains Linear Regression, XGBoost,
-        and Random Forest regressors, evaluates their prediction accuracy, and
-        returns the best overall pipeline.
+        Defines candidate models, calls the analysis engine to train and evaluate
+        each model individually, tracks their metrics, and returns the best overall pipeline.
 
         Args:
             df: The pandas DataFrame containing the clean workout data.
@@ -64,6 +62,62 @@ class ModelFinder:
             Pipeline: The scikit-learn Pipeline representing the best performing model.
         """
         self.logger.info(f"Starting model search to predict target column: {self.target_column}")
+
+        # Define candidate model architectures
+        models: dict[str, Any] = {
+            "LinearRegression": LinearRegression(),
+            "XGBoost": XGBRegressor(n_estimators=100, random_state=42),
+            "RandomForest": RandomForestRegressor(n_estimators=100, random_state=42),
+        }
+
+        # Track and compare metrics to find the best model based on R2 score
+        bestScore = -float("inf")
+        bestPipeline = None
+        bestModelName = ""
+
+        self.logger.info("--- Model Metrics Summary ---")
+        for name, model in models.items():
+            result = self.performModelAnalysis(df, name, model)
+            if result is None:
+                continue
+
+            metrics = result["metrics"]
+            r2 = metrics["r2"]
+            rmse = metrics["rmse"]
+            mae = metrics["mae"]
+            mape = metrics["mape"]
+
+            self.logger.info(
+                f"{name} Summary -> R2: {r2:.4f}, RMSE: {rmse:.4f}, MAE: {mae:.2f}, MAPE: {mape * 100.0:.2f}%"
+            )
+
+            if r2 > bestScore:
+                bestScore = r2
+                bestPipeline = result["pipeline"]
+                bestModelName = name
+
+        if bestPipeline is None:
+            raise RuntimeError("All models failed to train successfully.")
+
+        self.logger.info(f"Successfully determined best model: {bestModelName} with R2 Score of {bestScore:.4f}")
+        return bestPipeline
+
+    def performModelAnalysis(self, df: pd.DataFrame, modelName: str, model: Any) -> dict[str, Any] | None:
+        """Perform Model Analysis - Train and Evaluate a Single Model
+
+        Prepares the dataset, builds preprocessing transformers, splits data into
+        train and test sets, and trains and evaluates the provided single model.
+
+        Args:
+            df: The pandas DataFrame containing the workout data.
+            modelName: The name of the model being evaluated.
+            model: The scikit-learn regressor object to train and evaluate.
+
+        Returns:
+            dict | None: A dictionary containing the trained pipeline and metrics,
+                or None if training fails.
+        """
+        self.logger.info(f"Executing performModelAnalysis for model: {modelName}")
 
         # Input validation
         if df is None or df.empty:
@@ -145,85 +199,65 @@ class ModelFinder:
         # Split into training and validation sets
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Define candidate model architectures
-        models: dict[str, Any] = {
-            "LinearRegression": LinearRegression(),
-            "XGBoost": XGBRegressor(n_estimators=100, random_state=42),
-            "RandomForest": RandomForestRegressor(n_estimators=100, random_state=42),
-        }
+        # Package preprocessing and estimator inside a single pipeline
+        pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", model)])
 
-        best_score = -float("inf")
-        best_pipeline = None
-        best_model_name = ""
+        try:
+            pipeline.fit(X_train, y_train)
+            y_pred = pipeline.predict(X_test)
 
-        # Train and evaluate each model
-        for name, model in models.items():
-            self.logger.info(f"Training and evaluating: {name}")
+            # Metrics
+            r2 = float(r2_score(y_test, y_pred))
+            rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+            mae = float(mean_absolute_error(y_test, y_pred))
 
-            # Package preprocessing and estimator inside a single pipeline
-            pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", model)])
+            # Calculate MAPE only on non-zero target weights to avoid division by zero (bodyweight exercises)
+            nonZeroMask = y_test > 0
+            if nonZeroMask.any():
+                mape = float(np.mean(np.abs((y_test[nonZeroMask] - y_pred[nonZeroMask]) / y_test[nonZeroMask])))
+            else:
+                mape = 0.0
 
-            try:
-                pipeline.fit(X_train, y_train)
-                y_pred = pipeline.predict(X_test)
+            self.logger.info(
+                f"{modelName} performance - R2: {r2:.4f}, RMSE: {rmse:.4f}, MAE: {mae:.2f}, MAPE: {mape * 100.0:.2f}%"
+            )
 
-                # Metrics
-                r2 = float(r2_score(y_test, y_pred))
-                rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
-                mae = float(mean_absolute_error(y_test, y_pred))
+            # Calculate error per exercise with average weight to check weight-error trends
+            evalDf = pd.DataFrame({"Name": X_test["Name"], "True_e1RM": y_test, "Abs_Error": np.abs(y_test - y_pred)})
+            exerciseStats = (
+                evalDf.groupby("Name").agg(avgWeight=("True_e1RM", "mean"), mae=("Abs_Error", "mean")).reset_index()
+            )
 
-                # Calculate MAPE only on non-zero target weights to avoid division by zero (bodyweight exercises)
-                nonZeroMask = y_test > 0
-                if nonZeroMask.any():
-                    mape = float(np.mean(np.abs((y_test[nonZeroMask] - y_pred[nonZeroMask]) / y_test[nonZeroMask])))
-                else:
-                    mape = 0.0
-
+            self.logger.info(f"{modelName} error breakdown by exercise (top 5 heaviest exercises):")
+            nonZeroStats = exerciseStats[exerciseStats["avgWeight"] > 0]
+            sortedStats = nonZeroStats.sort_values(by="avgWeight", ascending=False)
+            for _, row in sortedStats.head(5).iterrows():
                 self.logger.info(
-                    f"{name} performance - R2: {r2:.4f}, RMSE: {rmse:.4f}, MAE: {mae:.2f}, MAPE: {mape * 100.0:.2f}%"
+                    f"""  - {row["Name"]}:
+                        Avg Weight = {row["avgWeight"]:.1f},
+                        MAE = {row["mae"]:.2f}"""
+                )
+            self.logger.info(f"""{modelName} error breakdown by exercise (bottom 5 lightest exercises with weight):""")
+            for _, row in sortedStats.tail(5).iterrows():
+                self.logger.info(
+                    f"""  - {row["Name"]}:
+                        Avg Weight = {row["avgWeight"]:.1f},
+                        MAE = {row["mae"]:.2f}"""
                 )
 
-                # Calculate error per exercise with average weight to check weight-error trends
-                evalDf = pd.DataFrame(
-                    {"Name": X_test["Name"], "True_e1RM": y_test, "Abs_Error": np.abs(y_test - y_pred)}
-                )
-                exerciseStats = (
-                    evalDf.groupby("Name").agg(avgWeight=("True_e1RM", "mean"), mae=("Abs_Error", "mean")).reset_index()
-                )
+            return {
+                "pipeline": pipeline,
+                "metrics": {
+                    "r2": r2,
+                    "rmse": rmse,
+                    "mae": mae,
+                    "mape": mape,
+                },
+            }
 
-                self.logger.info(f"{name} error breakdown by exercise (top 5 heaviest exercises):")
-                nonZeroStats = exerciseStats[exerciseStats["avgWeight"] > 0]
-                sortedStats = nonZeroStats.sort_values(by="avgWeight", ascending=False)
-                for _, row in sortedStats.head(5).iterrows():
-                    self.logger.info(
-                        f"""  - {row["Name"]}:
-                            Avg Weight = {row["avgWeight"]:.1f},
-                            MAE = {row["mae"]:.2f}"""
-                    )
-                self.logger.info(f"""{name} error breakdown by exercise (bottom 5 lightest exercises with weight):""")
-                for _, row in sortedStats.tail(5).iterrows():
-                    self.logger.info(
-                        f"""  - {row["Name"]}:
-                            Avg Weight = {row["avgWeight"]:.1f},
-                            MAE = {row["mae"]:.2f}"""
-                    )
-
-                if r2 > best_score:
-                    best_score = r2
-                    best_pipeline = pipeline
-                    best_model_name = name
-
-            except Exception:
-                self.logger.exception(f"Error training {name}")
-
-        if best_pipeline is None:
-            raise RuntimeError("All models failed to train successfully.")
-
-        self.logger.info(
-            f"""Successfully determined best model: {best_model_name}
-                with R2 Score of {best_score:.4f}"""
-        )
-        return best_pipeline
+        except Exception:
+            self.logger.exception(f"Error training {modelName}")
+            return None
 
 
 if __name__ == "__main__":
@@ -234,7 +268,7 @@ if __name__ == "__main__":
     data = DataPipeline.run("data/strong_workouts.csv", "data/renpho.csv")
 
     finder = ModelFinder(target_column="e1RM")
-    best_model = finder.find_best_model(data)
+    best_model = finder.findBestModel(data)
 
     # Perform a test prediction
     test_row = pd.DataFrame(
