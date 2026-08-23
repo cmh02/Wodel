@@ -7,9 +7,9 @@ logging that is completed in the Wodle Engine.
 """
 
 # Library Imports
+import logging
 import os
 import sys
-import logging
 
 
 def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBUG) -> logging.Logger:
@@ -53,7 +53,7 @@ def get_logger(name: str, log_file: str = "wodle.log", level: int = logging.DEBU
             file_handler = logging.FileHandler(log_file, encoding="utf-8")
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
-        except Exception as e:
+        except OSError as e:
             stdout_handler.flush()
             print(f"Warning: Could not configure file logger: {e}", file=sys.stderr)
 

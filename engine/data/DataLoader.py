@@ -19,6 +19,7 @@ row is a single set of an exercise with the following columns:
 
 # Library Imports
 import logging
+
 import pandas as pd
 
 # Internal Modules
