@@ -13,7 +13,7 @@ import tempfile
 from typing import Any
 
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sklearn.ensemble import RandomForestRegressor
@@ -44,12 +44,13 @@ trainedPipeline: Any = None
 bestModelName: str = ""
 bestModelScore: float = -float("inf")
 modelMetrics: dict[str, Any] = {}
+processedDataset: pd.DataFrame | None = None
 
 
 class PredictionRequest(BaseModel):
     """Wodel PredictionRequest
 
-    Data model representing the inputs required to predict e1RM.
+    Data model representing the inputs required to predict e1RM in Advanced Mode.
     """
 
     Name: str
@@ -61,6 +62,7 @@ class PredictionRequest(BaseModel):
     timeSinceLastWorkout: float
     timeSinceLastSameExercise: float
     exerciseOrderInWorkout: int
+    Age: float = 24.0
     Body_Weight: float
     BMI: float
     Body_Fat: float
@@ -76,10 +78,27 @@ class PredictionRequest(BaseModel):
     Metabolic_Age: float
 
 
+class SimplePredictionRequest(BaseModel):
+    """Wodel SimplePredictionRequest
+
+    Data model for user-friendly simple predictions.
+    """
+
+    Name: str
+    Set_Order: str
+    Reps: int = 8
+    Weight: float = 185.0
+    exerciseOrderInWorkout: int = 1
+    birthday: str | None = None
+    current_age: float | None = None
+
+
 @app.post("/api/train")
 async def trainModel(
     workoutFile: UploadFile = File(...),  # noqa: B008
     biometricsFile: UploadFile = File(...),  # noqa: B008
+    birthday: str | None = Form(None),  # noqa: B008
+    currentAge: float | None = Form(None),  # noqa: B008
 ) -> dict[str, Any]:
     """Train Model - Upload Files and Run Pipeline
 
@@ -89,11 +108,13 @@ async def trainModel(
     Args:
         workoutFile: The uploaded Strong workout logs CSV.
         biometricsFile: The uploaded Renpho biometrics CSV.
+        birthday: Optional birthdate string (YYYY-MM-DD).
+        currentAge: Optional current age in years.
 
     Returns:
         dict: A summary of training metrics and the best model name.
     """
-    global trainedPipeline, bestModelName, bestModelScore, modelMetrics
+    global trainedPipeline, bestModelName, bestModelScore, modelMetrics, processedDataset
 
     logger.info("Received request to train models.")
 
@@ -119,7 +140,12 @@ async def trainModel(
 
             # Execute pipeline
             logger.info("Running data preprocessing pipeline...")
-            data = DataPipeline.run(workoutTempPath, biometricsTempPath)
+            data = DataPipeline.run(
+                workoutTempPath,
+                biometricsTempPath,
+                birthday=birthday,
+                current_age=currentAge,
+            )
 
             # Perform model training and analysis
             logger.info("Training models...")
@@ -156,6 +182,7 @@ async def trainModel(
             bestModelName = bestName
             bestModelScore = bestScore
             modelMetrics = metricsSummary
+            processedDataset = data
 
             logger.info(f"Model training complete. Best model: {bestName} with R2: {bestScore:.4f}")
             return {
@@ -207,6 +234,7 @@ async def predictTarget(request: PredictionRequest) -> dict[str, Any]:
             "timeSinceLastWorkout": [request.timeSinceLastWorkout],
             "timeSinceLastSameExercise": [request.timeSinceLastSameExercise],
             "exerciseOrderInWorkout": [request.exerciseOrderInWorkout],
+            "Age": [request.Age],
             "Body Weight": [request.Body_Weight],
             "BMI": [request.BMI],
             "Body Fat": [request.Body_Fat],
@@ -233,6 +261,130 @@ async def predictTarget(request: PredictionRequest) -> dict[str, Any]:
 
     except Exception as e:
         logger.exception("Error occurred during prediction.")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/api/predict/simple")
+async def predictSimple(request: SimplePredictionRequest) -> dict[str, Any]:
+    """Predict Simple - Automated Lookup Prediction
+
+    Calculates current set e1RM, looks up lag features and biometrics from the
+    trained dataset, and performs model prediction.
+    """
+    global trainedPipeline, processedDataset, bestModelName
+
+    if trainedPipeline is None:
+        raise HTTPException(status_code=400, detail="No model has been trained yet. Please train the model first.")
+
+    try:
+        # Calculate current set e1RM (Epley formula: weight * (1 + reps / 30))
+        current_set_e1RM = request.Weight * (1.0 + request.Reps / 30.0)
+
+        # Default fallbacks
+        lag1, lag2, lag3 = current_set_e1RM, current_set_e1RM, current_set_e1RM
+        timeSinceLastWorkout = 2.0
+        timeSinceLastSameExercise = 7.0
+        calculated_age = request.current_age if request.current_age is not None else 24.0
+
+        biometrics = {
+            "Body Weight": 140.0,
+            "BMI": 23.0,
+            "Body Fat": 15.0,
+            "Fat-Free Mass": 119.0,
+            "Subcutaneous Fat": 13.0,
+            "Visceral Fat": 6.0,
+            "Body Water": 61.0,
+            "Skeletal Muscle": 55.0,
+            "Muscle Mass": 113.0,
+            "Bone Mass": 6.0,
+            "Protein": 19.0,
+            "BMR": 1540.0,
+            "Metabolic Age": 18.0,
+        }
+
+        if processedDataset is not None and not processedDataset.empty:
+            # Filter history for the selected exercise
+            exercise_rows = processedDataset[processedDataset["Name"] == request.Name]
+            if not exercise_rows.empty:
+                recent_ex = exercise_rows.iloc[-1]
+                if "e1RMLag1" in recent_ex:
+                    lag1 = float(recent_ex.get("e1RMLag1", current_set_e1RM))
+                    lag2 = float(recent_ex.get("e1RMLag2", current_set_e1RM))
+                    lag3 = float(recent_ex.get("e1RMLag3", current_set_e1RM))
+                if "timeSinceLastSameExercise" in recent_ex:
+                    timeSinceLastSameExercise = float(recent_ex.get("timeSinceLastSameExercise", 7.0))
+
+            latest_row = processedDataset.iloc[-1]
+            if "timeSinceLastWorkout" in latest_row:
+                timeSinceLastWorkout = float(latest_row.get("timeSinceLastWorkout", 2.0))
+
+            for key in biometrics:
+                if key in latest_row:
+                    biometrics[key] = float(latest_row[key])
+
+            if "Age" in latest_row:
+                calculated_age = float(latest_row["Age"])
+
+        # Override age if birthday or current_age passed directly in request
+        if request.birthday:
+            try:
+                b_date = pd.to_datetime(request.birthday)
+                today = pd.Timestamp.now()
+                calculated_age = float((today - b_date).days / 365.2425)
+            except Exception:
+                pass
+        elif request.current_age is not None:
+            calculated_age = float(request.current_age)
+
+        inputData = {
+            "Name": [request.Name],
+            "Set Order": [request.Set_Order],
+            "Distance": [0.0],
+            "e1RMLag1": [lag1],
+            "e1RMLag2": [lag2],
+            "e1RMLag3": [lag3],
+            "timeSinceLastWorkout": [timeSinceLastWorkout],
+            "timeSinceLastSameExercise": [timeSinceLastSameExercise],
+            "exerciseOrderInWorkout": [request.exerciseOrderInWorkout],
+            "Age": [calculated_age],
+            "Body Weight": [biometrics["Body Weight"]],
+            "BMI": [biometrics["BMI"]],
+            "Body Fat": [biometrics["Body Fat"]],
+            "Fat-Free Mass": [biometrics["Fat-Free Mass"]],
+            "Subcutaneous Fat": [biometrics["Subcutaneous Fat"]],
+            "Visceral Fat": [biometrics["Visceral Fat"]],
+            "Body Water": [biometrics["Body Water"]],
+            "Skeletal Muscle": [biometrics["Skeletal Muscle"]],
+            "Muscle Mass": [biometrics["Muscle Mass"]],
+            "Bone Mass": [biometrics["Bone Mass"]],
+            "Protein": [biometrics["Protein"]],
+            "BMR": [biometrics["BMR"]],
+            "Metabolic Age": [biometrics["Metabolic Age"]],
+        }
+
+        testRow = pd.DataFrame(inputData)
+        predictedVal = float(trainedPipeline.predict(testRow)[0])
+
+        return {
+            "prediction": predictedVal,
+            "target": "e1RM",
+            "modelUsed": bestModelName,
+            "derivedFeatures": {
+                "currentSete1RM": current_set_e1RM,
+                "calculatedAge": calculated_age,
+                "e1RMLag1": lag1,
+                "e1RMLag2": lag2,
+                "e1RMLag3": lag3,
+                "timeSinceLastWorkout": timeSinceLastWorkout,
+                "timeSinceLastSameExercise": timeSinceLastSameExercise,
+                "bodyWeight": biometrics["Body Weight"],
+                "bmi": biometrics["BMI"],
+                "bodyFat": biometrics["Body Fat"],
+            },
+        }
+
+    except Exception as e:
+        logger.exception("Error occurred during simple prediction.")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

@@ -7,11 +7,27 @@ function App() {
   // File upload state
   const [workoutFile, setWorkoutFile] = useState(null);
   const [biometricsFile, setBiometricsFile] = useState(null);
+  const [userBirthday, setUserBirthday] = useState("2002-05-14");
+  const [userCurrentAge, setUserCurrentAge] = useState(24);
   const [trainingLoading, setTrainingLoading] = useState(false);
   const [trainingError, setTrainingError] = useState(null);
   const [trainingResult, setTrainingResult] = useState(null);
 
-  // Prediction form state (pre-filled with the demonstration mock values)
+  // Prediction Mode State: 'simple' | 'advanced'
+  const [predictionMode, setPredictionMode] = useState('simple');
+
+  // Simple Mode Prediction Inputs
+  const [simpleInputs, setSimpleInputs] = useState({
+    Name: "Romanian Deadlift (Barbell)",
+    Set_Order: "3",
+    Reps: 8,
+    Weight: 185.0,
+    exerciseOrderInWorkout: 2,
+    birthday: "2002-05-14",
+    current_age: 24
+  });
+
+  // Advanced Mode Prediction Inputs
   const [predictionInputs, setPredictionInputs] = useState({
     Name: "Romanian Deadlift (Barbell)",
     Set_Order: "3",
@@ -22,6 +38,7 @@ function App() {
     timeSinceLastWorkout: 2.0,
     timeSinceLastSameExercise: 7.0,
     exerciseOrderInWorkout: 2,
+    Age: 24.0,
     Body_Weight: 140.0,
     BMI: 23.0,
     Body_Fat: 15.0,
@@ -41,7 +58,7 @@ function App() {
   const [predictError, setPredictError] = useState(null);
   const [predictionResult, setPredictionResult] = useState(null);
 
-  // Available common exercises for dropdown
+  // Common exercises list
   const commonExercises = [
     "Romanian Deadlift (Barbell)",
     "Bench Press (Dumbbell)",
@@ -60,6 +77,17 @@ function App() {
     "Back Extension",
     "Reverse Fly (Dumbbell)"
   ];
+
+  const handleBirthdayChange = (newVal) => {
+    setUserBirthday(newVal);
+    setSimpleInputs(prev => ({ ...prev, birthday: newVal }));
+  };
+
+  const handleAgeChange = (newVal) => {
+    setUserCurrentAge(newVal);
+    setSimpleInputs(prev => ({ ...prev, current_age: newVal }));
+    setPredictionInputs(prev => ({ ...prev, Age: parseFloat(newVal) || 24.0 }));
+  };
 
   // Check model status on mount
   useEffect(() => {
@@ -92,6 +120,8 @@ function App() {
     const formData = new FormData();
     formData.append("workoutFile", workoutFile);
     formData.append("biometricsFile", biometricsFile);
+    if (userBirthday) formData.append("birthday", userBirthday);
+    if (userCurrentAge) formData.append("currentAge", userCurrentAge);
 
     try {
       const response = await fetch(`${API_HOST}/api/train`, {
@@ -119,13 +149,22 @@ function App() {
     setPredictError(null);
     setPredictionResult(null);
 
+    const endpoint = predictionMode === 'simple' ? '/api/predict/simple' : '/api/predict';
+    const payload = predictionMode === 'simple'
+      ? {
+          ...simpleInputs,
+          birthday: userBirthday,
+          current_age: parseFloat(userCurrentAge) || 24.0
+        }
+      : predictionInputs;
+
     try {
-      const response = await fetch(`${API_HOST}/api/predict`, {
+      const response = await fetch(`${API_HOST}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(predictionInputs)
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -142,7 +181,14 @@ function App() {
     }
   };
 
-  const handleInputChange = (fieldName, value) => {
+  const handleSimpleInputChange = (fieldName, value) => {
+    setSimpleInputs(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+  };
+
+  const handleAdvancedInputChange = (fieldName, value) => {
     setPredictionInputs(prev => ({
       ...prev,
       [fieldName]: value
@@ -198,6 +244,31 @@ function App() {
                   <span>Select renpho.csv</span>
                 )}
               </label>
+            </div>
+
+            {/* Optional Personal Demographics */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              <div className="input-group">
+                <label htmlFor="user-birthday">User Birthday</label>
+                <input
+                  type="date"
+                  id="user-birthday"
+                  className="input-control"
+                  value={userBirthday}
+                  onChange={(e) => handleBirthdayChange(e.target.value)}
+                />
+              </div>
+              <div className="input-group">
+                <label htmlFor="user-age">Current Age (Years)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  id="user-age"
+                  className="input-control"
+                  value={userCurrentAge}
+                  onChange={(e) => handleAgeChange(e.target.value)}
+                />
+              </div>
             </div>
 
             {trainingError && <div style={{ color: '#ef4444', marginBottom: '15px', fontWeight: '500' }}>{trainingError}</div>}
@@ -263,19 +334,62 @@ function App() {
         {/* Step 2: Make Predictions */}
         <section className="glass-card">
           <h2 className="form-section-title">2. Predict Estimated 1-Rep Max (e1RM)</h2>
+
+          {/* Mode Switcher Tabs */}
+          <div className="mode-toggle-group">
+            <button
+              type="button"
+              className={`mode-tab ${predictionMode === 'simple' ? 'active-mode' : ''}`}
+              onClick={() => { setPredictionMode('simple'); setPredictionResult(null); }}
+              id="simple-mode-tab"
+            >
+              ⚡️ Simple Prediction Mode
+            </button>
+            <button
+              type="button"
+              className={`mode-tab ${predictionMode === 'advanced' ? 'active-mode' : ''}`}
+              onClick={() => { setPredictionMode('advanced'); setPredictionResult(null); }}
+              id="advanced-mode-tab"
+            >
+              ⚙️ Advanced Prediction Mode
+            </button>
+          </div>
+
           <form onSubmit={handlePredictSubmit}>
-            <div className="form-columns">
-              {/* Column 1: Exercise Info */}
-              <div className="form-column">
-                <h3 className="form-column-title">Exercise Info</h3>
-                
+            {predictionMode === 'simple' ? (
+              /* --- SIMPLE PREDICTION FORM --- */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="input-group">
+                    <label htmlFor="simple-birthday">Birthday</label>
+                    <input
+                      type="date"
+                      id="simple-birthday"
+                      className="input-control"
+                      value={userBirthday}
+                      onChange={(e) => handleBirthdayChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="simple-age">Current Age</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      id="simple-age"
+                      className="input-control"
+                      value={userCurrentAge}
+                      onChange={(e) => handleAgeChange(e.target.value)}
+                    />
+                  </div>
+                </div>
+
                 <div className="input-group">
-                  <label htmlFor="input-name">Exercise Name</label>
+                  <label htmlFor="simple-name">Exercise Name</label>
                   <select
-                    id="input-name"
+                    id="simple-name"
                     className="input-control"
-                    value={predictionInputs.Name}
-                    onChange={(e) => handleInputChange("Name", e.target.value)}
+                    value={simpleInputs.Name}
+                    onChange={(e) => handleSimpleInputChange("Name", e.target.value)}
                   >
                     {commonExercises.map(ex => (
                       <option key={ex} value={ex}>{ex}</option>
@@ -283,280 +397,398 @@ function App() {
                   </select>
                 </div>
 
-                <div className="input-group">
-                  <label htmlFor="input-set-order">Set Order</label>
-                  <select
-                    id="input-set-order"
-                    className="input-control"
-                    value={predictionInputs.Set_Order}
-                    onChange={(e) => handleInputChange("Set_Order", e.target.value)}
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                      <option key={num} value={num.toString()}>{num}</option>
-                    ))}
-                  </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  {/* Set Order Slider */}
+                  <div className="slider-container">
+                    <div className="slider-header">
+                      <label htmlFor="simple-set-order">Set Order</label>
+                      <span className="slider-badge">Set {simpleInputs.Set_Order}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      id="simple-set-order"
+                      className="range-input"
+                      value={simpleInputs.Set_Order}
+                      onChange={(e) => handleSimpleInputChange("Set_Order", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Exercise Order Slider */}
+                  <div className="slider-container">
+                    <div className="slider-header">
+                      <label htmlFor="simple-ex-order">Exercise Order in Workout</label>
+                      <span className="slider-badge">#{simpleInputs.exerciseOrderInWorkout}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="15"
+                      id="simple-ex-order"
+                      className="range-input"
+                      value={simpleInputs.exerciseOrderInWorkout}
+                      onChange={(e) => handleSimpleInputChange("exerciseOrderInWorkout", parseInt(e.target.value) || 1)}
+                    />
+                  </div>
                 </div>
 
-                <div className="input-group">
-                  <label htmlFor="input-distance">Distance (miles)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="input-distance"
-                    className="input-control"
-                    value={predictionInputs.Distance}
-                    onChange={(e) => handleInputChange("Distance", parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label htmlFor="input-exercise-order">Exercise Order in Workout</label>
-                  <input
-                    type="number"
-                    id="input-exercise-order"
-                    className="input-control"
-                    value={predictionInputs.exerciseOrderInWorkout}
-                    onChange={(e) => handleInputChange("exerciseOrderInWorkout", parseInt(e.target.value) || 0)}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="input-group">
+                    <label htmlFor="simple-reps"># of Reps</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      id="simple-reps"
+                      className="input-control"
+                      value={simpleInputs.Reps}
+                      onChange={(e) => handleSimpleInputChange("Reps", parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="simple-weight">Weight (lbs)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      id="simple-weight"
+                      className="input-control"
+                      value={simpleInputs.Weight}
+                      onChange={(e) => handleSimpleInputChange("Weight", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
                 </div>
               </div>
+            ) : (
+              /* --- ADVANCED PREDICTION FORM --- */
+              <div className="form-columns">
+                {/* Column 1: Exercise Info */}
+                <div className="form-column">
+                  <h3 className="form-column-title">Exercise Info</h3>
+                  
+                  <div className="input-group">
+                    <label htmlFor="input-name">Exercise Name</label>
+                    <select
+                      id="input-name"
+                      className="input-control"
+                      value={predictionInputs.Name}
+                      onChange={(e) => handleAdvancedInputChange("Name", e.target.value)}
+                    >
+                      {commonExercises.map(ex => (
+                        <option key={ex} value={ex}>{ex}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              {/* Column 2: Historical Lags */}
-              <div className="form-column">
-                <h3 className="form-column-title">Performance History</h3>
+                  {/* Set Order Slider */}
+                  <div className="slider-container">
+                    <div className="slider-header">
+                      <label htmlFor="input-set-order">Set Order</label>
+                      <span className="slider-badge">Set {predictionInputs.Set_Order}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      id="input-set-order"
+                      className="range-input"
+                      value={predictionInputs.Set_Order}
+                      onChange={(e) => handleAdvancedInputChange("Set_Order", e.target.value)}
+                    />
+                  </div>
 
-                <div className="input-group">
-                  <label htmlFor="input-lag1">Lag 1 max e1RM (lbs)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    id="input-lag1"
-                    className="input-control"
-                    value={predictionInputs.e1RMLag1}
-                    onChange={(e) => handleInputChange("e1RMLag1", parseFloat(e.target.value) || 0)}
-                  />
+                  <div className="input-group">
+                    <label htmlFor="input-distance">Distance (miles)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      id="input-distance"
+                      className="input-control"
+                      value={predictionInputs.Distance}
+                      onChange={(e) => handleAdvancedInputChange("Distance", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+
+                  {/* Exercise Order Slider */}
+                  <div className="slider-container">
+                    <div className="slider-header">
+                      <label htmlFor="input-exercise-order">Exercise Order in Workout</label>
+                      <span className="slider-badge">#{predictionInputs.exerciseOrderInWorkout}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="15"
+                      id="input-exercise-order"
+                      className="range-input"
+                      value={predictionInputs.exerciseOrderInWorkout}
+                      onChange={(e) => handleAdvancedInputChange("exerciseOrderInWorkout", parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label htmlFor="input-age-advanced">User Age (years)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      id="input-age-advanced"
+                      className="input-control"
+                      value={predictionInputs.Age}
+                      onChange={(e) => handleAdvancedInputChange("Age", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
                 </div>
 
-                <div className="input-group">
-                  <label htmlFor="input-lag2">Lag 2 max e1RM (lbs)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    id="input-lag2"
-                    className="input-control"
-                    value={predictionInputs.e1RMLag2}
-                    onChange={(e) => handleInputChange("e1RMLag2", parseFloat(e.target.value) || 0)}
-                  />
+                {/* Column 2: Historical Lags */}
+                <div className="form-column">
+                  <h3 className="form-column-title">Performance History</h3>
+
+                  <div className="input-group">
+                    <label htmlFor="input-lag1">Lag 1 max e1RM (lbs)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      id="input-lag1"
+                      className="input-control"
+                      value={predictionInputs.e1RMLag1}
+                      onChange={(e) => handleAdvancedInputChange("e1RMLag1", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label htmlFor="input-lag2">Lag 2 max e1RM (lbs)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      id="input-lag2"
+                      className="input-control"
+                      value={predictionInputs.e1RMLag2}
+                      onChange={(e) => handleAdvancedInputChange("e1RMLag2", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label htmlFor="input-lag3">Lag 3 max e1RM (lbs)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      id="input-lag3"
+                      className="input-control"
+                      value={predictionInputs.e1RMLag3}
+                      onChange={(e) => handleAdvancedInputChange("e1RMLag3", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+
+                  {/* Days Since Last Workout Slider */}
+                  <div className="slider-container">
+                    <div className="slider-header">
+                      <label htmlFor="input-time-last-workout">Days Since Last Workout</label>
+                      <span className="slider-badge">{predictionInputs.timeSinceLastWorkout} days</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="30"
+                      step="0.5"
+                      id="input-time-last-workout"
+                      className="range-input"
+                      value={predictionInputs.timeSinceLastWorkout}
+                      onChange={(e) => handleAdvancedInputChange("timeSinceLastWorkout", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+
+                  {/* Days Since Last Same Exercise Slider */}
+                  <div className="slider-container">
+                    <div className="slider-header">
+                      <label htmlFor="input-time-same-exercise">Days Since Last Same Exercise</label>
+                      <span className="slider-badge">{predictionInputs.timeSinceLastSameExercise} days</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="30"
+                      step="0.5"
+                      id="input-time-same-exercise"
+                      className="range-input"
+                      value={predictionInputs.timeSinceLastSameExercise}
+                      onChange={(e) => handleAdvancedInputChange("timeSinceLastSameExercise", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
                 </div>
 
-                <div className="input-group">
-                  <label htmlFor="input-lag3">Lag 3 max e1RM (lbs)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    id="input-lag3"
-                    className="input-control"
-                    value={predictionInputs.e1RMLag3}
-                    onChange={(e) => handleInputChange("e1RMLag3", parseFloat(e.target.value) || 0)}
-                  />
-                </div>
+                {/* Column 3: Biometrics */}
+                <div className="form-column">
+                  <h3 className="form-column-title">Body Biometrics</h3>
 
-                <div className="input-group">
-                  <label htmlFor="input-time-last-workout">Days Since Last Workout</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    id="input-time-last-workout"
-                    className="input-control"
-                    value={predictionInputs.timeSinceLastWorkout}
-                    onChange={(e) => handleInputChange("timeSinceLastWorkout", parseFloat(e.target.value) || 0)}
-                  />
-                </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div className="input-group">
+                      <label htmlFor="input-weight">Weight (lbs)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-weight"
+                        className="input-control"
+                        value={predictionInputs.Body_Weight}
+                        onChange={(e) => handleAdvancedInputChange("Body_Weight", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label htmlFor="input-bmi">BMI</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-bmi"
+                        className="input-control"
+                        value={predictionInputs.BMI}
+                        onChange={(e) => handleAdvancedInputChange("BMI", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
 
-                <div className="input-group">
-                  <label htmlFor="input-time-same-exercise">Days Since Last Same Exercise</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    id="input-time-same-exercise"
-                    className="input-control"
-                    value={predictionInputs.timeSinceLastSameExercise}
-                    onChange={(e) => handleInputChange("timeSinceLastSameExercise", parseFloat(e.target.value) || 0)}
-                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div className="input-group">
+                      <label htmlFor="input-fat">Body Fat (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-fat"
+                        className="input-control"
+                        value={predictionInputs.Body_Fat}
+                        onChange={(e) => handleAdvancedInputChange("Body_Fat", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label htmlFor="input-fat-free">Fat-Free Mass (lb)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-fat-free"
+                        className="input-control"
+                        value={predictionInputs.Fat_Free_Mass}
+                        onChange={(e) => handleAdvancedInputChange("Fat_Free_Mass", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div className="input-group">
+                      <label htmlFor="input-subcutaneous">Subcutaneous Fat (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-subcutaneous"
+                        className="input-control"
+                        value={predictionInputs.Subcutaneous_Fat}
+                        onChange={(e) => handleAdvancedInputChange("Subcutaneous_Fat", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label htmlFor="input-visceral">Visceral Fat</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-visceral"
+                        className="input-control"
+                        value={predictionInputs.Visceral_Fat}
+                        onChange={(e) => handleAdvancedInputChange("Visceral_Fat", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div className="input-group">
+                      <label htmlFor="input-water">Body Water (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-water"
+                        className="input-control"
+                        value={predictionInputs.Body_Water}
+                        onChange={(e) => handleAdvancedInputChange("Body_Water", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label htmlFor="input-muscle">Skeletal Muscle (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-muscle"
+                        className="input-control"
+                        value={predictionInputs.Skeletal_Muscle}
+                        onChange={(e) => handleAdvancedInputChange("Skeletal_Muscle", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div className="input-group">
+                      <label htmlFor="input-muscle-mass">Muscle Mass (lb)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-muscle-mass"
+                        className="input-control"
+                        value={predictionInputs.Muscle_Mass}
+                        onChange={(e) => handleAdvancedInputChange("Muscle_Mass", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label htmlFor="input-bone-mass">Bone Mass (lb)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-bone-mass"
+                        className="input-control"
+                        value={predictionInputs.Bone_Mass}
+                        onChange={(e) => handleAdvancedInputChange("Bone_Mass", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div className="input-group">
+                      <label htmlFor="input-protein">Protein (%)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        id="input-protein"
+                        className="input-control"
+                        value={predictionInputs.Protein}
+                        onChange={(e) => handleAdvancedInputChange("Protein", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label htmlFor="input-bmr">BMR (kcal)</label>
+                      <input
+                        type="number"
+                        id="input-bmr"
+                        className="input-control"
+                        value={predictionInputs.BMR}
+                        onChange={(e) => handleAdvancedInputChange("BMR", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label htmlFor="input-metabolic-age">Metabolic Age (years)</label>
+                    <input
+                      type="number"
+                      id="input-metabolic-age"
+                      className="input-control"
+                      value={predictionInputs.Metabolic_Age}
+                      onChange={(e) => handleAdvancedInputChange("Metabolic_Age", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Column 3: Biometrics */}
-              <div className="form-column">
-                <h3 className="form-column-title">Body Biometrics</h3>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div className="input-group">
-                    <label htmlFor="input-weight">Weight (lbs)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-weight"
-                      className="input-control"
-                      value={predictionInputs.Body_Weight}
-                      onChange={(e) => handleInputChange("Body_Weight", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label htmlFor="input-bmi">BMI</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-bmi"
-                      className="input-control"
-                      value={predictionInputs.BMI}
-                      onChange={(e) => handleInputChange("BMI", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div className="input-group">
-                    <label htmlFor="input-fat">Body Fat (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-fat"
-                      className="input-control"
-                      value={predictionInputs.Body_Fat}
-                      onChange={(e) => handleInputChange("Body_Fat", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label htmlFor="input-fat-free">Fat-Free Mass (lb)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-fat-free"
-                      className="input-control"
-                      value={predictionInputs.Fat_Free_Mass}
-                      onChange={(e) => handleInputChange("Fat_Free_Mass", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div className="input-group">
-                    <label htmlFor="input-subcutaneous">Subcutaneous Fat (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-subcutaneous"
-                      className="input-control"
-                      value={predictionInputs.Subcutaneous_Fat}
-                      onChange={(e) => handleInputChange("Subcutaneous_Fat", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label htmlFor="input-visceral">Visceral Fat</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-visceral"
-                      className="input-control"
-                      value={predictionInputs.Visceral_Fat}
-                      onChange={(e) => handleInputChange("Visceral_Fat", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div className="input-group">
-                    <label htmlFor="input-water">Body Water (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-water"
-                      className="input-control"
-                      value={predictionInputs.Body_Water}
-                      onChange={(e) => handleInputChange("Body_Water", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label htmlFor="input-muscle">Skeletal Muscle (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-muscle"
-                      className="input-control"
-                      value={predictionInputs.Skeletal_Muscle}
-                      onChange={(e) => handleInputChange("Skeletal_Muscle", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div className="input-group">
-                    <label htmlFor="input-muscle-mass">Muscle Mass (lb)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-muscle-mass"
-                      className="input-control"
-                      value={predictionInputs.Muscle_Mass}
-                      onChange={(e) => handleInputChange("Muscle_Mass", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label htmlFor="input-bone-mass">Bone Mass (lb)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-bone-mass"
-                      className="input-control"
-                      value={predictionInputs.Bone_Mass}
-                      onChange={(e) => handleInputChange("Bone_Mass", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div className="input-group">
-                    <label htmlFor="input-protein">Protein (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="input-protein"
-                      className="input-control"
-                      value={predictionInputs.Protein}
-                      onChange={(e) => handleInputChange("Protein", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label htmlFor="input-bmr">BMR (kcal)</label>
-                    <input
-                      type="number"
-                      id="input-bmr"
-                      className="input-control"
-                      value={predictionInputs.BMR}
-                      onChange={(e) => handleInputChange("BMR", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <label htmlFor="input-age">Metabolic Age (years)</label>
-                  <input
-                    type="number"
-                    id="input-age"
-                    className="input-control"
-                    value={predictionInputs.Metabolic_Age}
-                    onChange={(e) => handleInputChange("Metabolic_Age", parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {predictError && <div style={{ color: '#ef4444', marginBottom: '15px', fontWeight: '500' }}>{predictError}</div>}
+            {predictError && <div style={{ color: '#ef4444', margin: '15px 0', fontWeight: '500' }}>{predictError}</div>}
 
             <button
               type="submit"
               className="btn-primary"
+              style={{ marginTop: '20px' }}
               disabled={predictLoading || !trainingResult}
               id="predict-btn"
             >
@@ -566,7 +798,7 @@ function App() {
                   Calculating Prediction...
                 </>
               ) : (
-                "Predict e1RM"
+                `Predict e1RM (${predictionMode === 'simple' ? 'Simple' : 'Advanced'})`
               )}
             </button>
           </form>
@@ -583,6 +815,47 @@ function App() {
                   Target: <strong>{predictionResult.target}</strong> | Model Used: <span>{predictionResult.modelUsed}</span>
                 </div>
               </div>
+
+              {/* Simple Mode Auto-Derived Features Card */}
+              {predictionResult.derivedFeatures && (
+                <div className="derived-card">
+                  <h4 className="derived-title">✨ Auto-Derived & Historical Lookups Used</h4>
+                  <div className="derived-grid">
+                    <div className="derived-item">
+                      <span className="derived-label">Current Set e1RM</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.currentSete1RM.toFixed(1)} lbs</span>
+                    </div>
+                    <div className="derived-item">
+                      <span className="derived-label">Calculated Age</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.calculatedAge.toFixed(1)} yrs</span>
+                    </div>
+                    <div className="derived-item">
+                      <span className="derived-label">Lag 1 e1RM</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.e1RMLag1.toFixed(1)} lbs</span>
+                    </div>
+                    <div className="derived-item">
+                      <span className="derived-label">Lag 2 e1RM</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.e1RMLag2.toFixed(1)} lbs</span>
+                    </div>
+                    <div className="derived-item">
+                      <span className="derived-label">Days Since Last Workout</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.timeSinceLastWorkout.toFixed(1)} days</span>
+                    </div>
+                    <div className="derived-item">
+                      <span className="derived-label">Days Since Same Ex</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.timeSinceLastSameExercise.toFixed(1)} days</span>
+                    </div>
+                    <div className="derived-item">
+                      <span className="derived-label">Body Weight</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.bodyWeight.toFixed(1)} lbs</span>
+                    </div>
+                    <div className="derived-item">
+                      <span className="derived-label">BMI</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.bmi.toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
