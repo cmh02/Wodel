@@ -139,6 +139,7 @@ class ModelFinder:
             "timeSinceLastWorkout",
             "timeSinceLastSameExercise",
             "exerciseOrderInWorkout",
+            "Age",
             "Body Weight",
             "BMI",
             "Body Fat",
@@ -265,7 +266,12 @@ if __name__ == "__main__":
     from engine.data.Pipeline import Pipeline as DataPipeline
 
     # Load, clean, and engineer features using the integrated Pipeline
-    data = DataPipeline.run("data/strong_workouts.csv", "data/renpho.csv")
+    data = DataPipeline.run(
+        filePath="data/strong_workouts.csv", 
+        biometricsFilePath="data/renpho.csv", 
+        birthday="2002-05-14", 
+        current_age=24
+    )
 
     finder = ModelFinder(target_column="e1RM")
     best_model = finder.findBestModel(data)
@@ -283,6 +289,7 @@ if __name__ == "__main__":
                 "timeSinceLastWorkout": 2.0,
                 "timeSinceLastSameExercise": 7.0,
                 "exerciseOrderInWorkout": 2,
+                "Age": 24.0,
                 "Body Weight": 140.0,
                 "BMI": 23.0,
                 "Body Fat": 15.0,

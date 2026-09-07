@@ -25,7 +25,11 @@ class FeatureBuilder:
     """
 
     @staticmethod
-    def buildFeatures(df: pd.DataFrame) -> pd.DataFrame:
+    def buildFeatures(
+        df: pd.DataFrame,
+        birthday: str | pd.Timestamp | None = None,
+        current_age: float | None = None,
+    ) -> pd.DataFrame:
         """Build Features - Pipeline Execution
 
         Orchestrates the creation of advanced features including Epley 1RM calculation,
@@ -34,6 +38,8 @@ class FeatureBuilder:
 
         Args:
             df: The raw pandas DataFrame loaded from DataLoader.
+            birthday: The birthdate of the user.
+            current_age: The current age of the user.
 
         Returns:
             pd.DataFrame: The enriched DataFrame with new engineered features.
@@ -58,6 +64,9 @@ class FeatureBuilder:
 
         # Calculate Exercise Sequence Order in Workout
         engineeredDf = FeatureBuilder._calculateExerciseOrder(engineeredDf)
+
+        # Factor in user's Age at each workout time
+        engineeredDf = FeatureBuilder._calculateAge(engineeredDf, birthday, current_age)
 
         # Drop temporary columns
         engineeredDf = engineeredDf.drop(columns=["Date", "DateLag1"])
@@ -138,4 +147,36 @@ class FeatureBuilder:
             return group["Name"].map(nameToOrder)
 
         df["exerciseOrderInWorkout"] = df.groupby("Time", group_keys=False).apply(getExerciseOrder)
+        return df
+
+    @staticmethod
+    def _calculateAge(
+        df: pd.DataFrame,
+        birthday: str | pd.Timestamp | None = None,
+        current_age: float | None = None,
+    ) -> pd.DataFrame:
+        """Calculate user age for each data point using birthday and/or current age."""
+        if birthday is None and current_age is None:
+            logger.info("Neither birthday nor current_age provided. Skipping age calculation.")
+            return df
+
+        logger.info("Calculating age for each data point...")
+
+        # Determine the birth date reference
+        if birthday is not None:
+            birth_date = pd.to_datetime(birthday)
+        else:
+            # Estimate birth year from current_age and today
+            today = pd.Timestamp.now()
+            birth_year = int(today.year - current_age)
+            # Default to Jan 1st of that birth year
+            birth_date = pd.Timestamp(year=birth_year, month=1, day=1)
+            logger.info(f"Birthday not provided. Estimated birth year as {birth_year} based on current_age {current_age}.")
+
+        # Convert Time column to datetime series
+        workout_times = pd.to_datetime(df["Time"])
+
+        # Calculate exact age in fractional years (difference in days / 365.2425)
+        df["Age"] = (workout_times - birth_date).dt.days / 365.2425
+
         return df

@@ -30,7 +30,12 @@ class Pipeline:
     """
 
     @staticmethod
-    def run(filePath: str, biometricsFilePath: str = "data/renpho.csv") -> pd.DataFrame:
+    def run(
+        filePath: str,
+        biometricsFilePath: str = "data/renpho.csv",
+        birthday: str | pd.Timestamp | None = None,
+        current_age: float | None = None,
+    ) -> pd.DataFrame:
         """Run - Execute Data Pipeline
 
         Coordinates loading data from CSV, removing distance-based cardio exercises,
@@ -40,6 +45,8 @@ class Pipeline:
         Args:
             filePath: The path to the CSV file to load and process.
             biometricsFilePath: The path to the biometrics CSV file to load.
+            birthday: The birthdate of the user.
+            current_age: The current age of the user.
 
         Returns:
             pd.DataFrame: The fully cleaned, engineered, and augmented DataFrame ready for model fitting.
@@ -52,8 +59,8 @@ class Pipeline:
         # Clean Cardio/Distance
         strengthData = DataCleaner.removeAnyDistance(rawData)
 
-        # Build Features (estimated 1RMs, lags, elapsed times)
-        featuredData = FeatureBuilder.buildFeatures(strengthData)
+        # Build Features (estimated 1RMs, lags, elapsed times, age)
+        featuredData = FeatureBuilder.buildFeatures(strengthData, birthday, current_age)
 
         # Remove any rows with NaN values (e.g. initial lag NaNs)
         cleanedData = DataCleaner.removeAnyNaN(featuredData)
