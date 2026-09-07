@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import E1RMChart from './components/E1RMChart';
 
 const API_HOST = "http://localhost:8000";
 
@@ -21,10 +22,10 @@ function App() {
     Name: "Romanian Deadlift (Barbell)",
     Set_Order: "3",
     Reps: 8,
-    Weight: 185.0,
     exerciseOrderInWorkout: 2,
     birthday: "2002-05-14",
-    current_age: 24
+    current_age: 24,
+    body_weight: 140.0
   });
 
   // Advanced Mode Prediction Inputs
@@ -359,7 +360,7 @@ function App() {
             {predictionMode === 'simple' ? (
               /* --- SIMPLE PREDICTION FORM --- */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
                   <div className="input-group">
                     <label htmlFor="simple-birthday">Birthday</label>
                     <input
@@ -379,6 +380,17 @@ function App() {
                       className="input-control"
                       value={userCurrentAge}
                       onChange={(e) => handleAgeChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="simple-body-weight">Body Weight (lbs)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      id="simple-body-weight"
+                      className="input-control"
+                      value={simpleInputs.body_weight}
+                      onChange={(e) => handleSimpleInputChange("body_weight", parseFloat(e.target.value) || 0)}
                     />
                   </div>
                 </div>
@@ -433,30 +445,17 @@ function App() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                  <div className="input-group">
-                    <label htmlFor="simple-reps"># of Reps</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="50"
-                      id="simple-reps"
-                      className="input-control"
-                      value={simpleInputs.Reps}
-                      onChange={(e) => handleSimpleInputChange("Reps", parseInt(e.target.value) || 1)}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label htmlFor="simple-weight">Weight (lbs)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      id="simple-weight"
-                      className="input-control"
-                      value={simpleInputs.Weight}
-                      onChange={(e) => handleSimpleInputChange("Weight", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
+                <div className="input-group">
+                  <label htmlFor="simple-reps">Target # of Reps</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    id="simple-reps"
+                    className="input-control"
+                    value={simpleInputs.Reps}
+                    onChange={(e) => handleSimpleInputChange("Reps", parseInt(e.target.value) || 1)}
+                  />
                 </div>
               </div>
             ) : (
@@ -622,7 +621,7 @@ function App() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                     <div className="input-group">
-                      <label htmlFor="input-weight">Weight (lbs)</label>
+                      <label htmlFor="input-weight">Body Weight (lbs)</label>
                       <input
                         type="number"
                         step="0.1"
@@ -806,15 +805,19 @@ function App() {
           {/* Prediction Result Display */}
           {predictionResult && (
             <div className="glass-card prediction-card" id="prediction-result-card">
-              <div className="prediction-result-wrapper">
-                <span className="prediction-label">Predicted e1RM</span>
-                <span className="prediction-value" id="prediction-value">
-                  {predictionResult.prediction.toFixed(2)} <span style={{ fontSize: '2rem' }}>lbs</span>
+              <div className="prediction-header-bar">
+                <span className="prediction-model-tag">
+                  Model Used: <strong>{predictionResult.modelUsed}</strong> | Target: <strong>{predictionResult.target}</strong>
                 </span>
-                <div className="prediction-model-details">
-                  Target: <strong>{predictionResult.target}</strong> | Model Used: <span>{predictionResult.modelUsed}</span>
-                </div>
               </div>
+
+              {/* Trajectory & Performance Prediction Chart */}
+              <E1RMChart
+                history={predictionResult.history}
+                predictedE1RM={predictionResult.prediction}
+                exerciseName={predictionMode === 'simple' ? simpleInputs.Name : predictionInputs.Name}
+                targetReps={predictionMode === 'simple' ? simpleInputs.Reps : 8}
+              />
 
               {/* Simple Mode Auto-Derived Features Card */}
               {predictionResult.derivedFeatures && (
@@ -822,8 +825,8 @@ function App() {
                   <h4 className="derived-title">✨ Auto-Derived & Historical Lookups Used</h4>
                   <div className="derived-grid">
                     <div className="derived-item">
-                      <span className="derived-label">Current Set e1RM</span>
-                      <span className="derived-value">{predictionResult.derivedFeatures.currentSete1RM.toFixed(1)} lbs</span>
+                      <span className="derived-label">Calculated Age</span>
+                      <span className="derived-value">{predictionResult.derivedFeatures.calculatedAge.toFixed(1)} yrs</span>
                     </div>
                     <div className="derived-item">
                       <span className="derived-label">Calculated Age</span>

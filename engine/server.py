@@ -87,10 +87,10 @@ class SimplePredictionRequest(BaseModel):
     Name: str
     Set_Order: str
     Reps: int = 8
-    Weight: float = 185.0
     exerciseOrderInWorkout: int = 1
     birthday: str | None = None
     current_age: float | None = None
+    body_weight: float | None = None
 
 
 @app.post("/api/train")
@@ -204,6 +204,45 @@ async def trainModel(
                 os.remove(biometricsTempPath)
 
 
+def _get_exercise_history(exercise_name: str) -> list[dict[str, Any]]:
+    """Helper to retrieve historical e1RM records for an exercise."""
+    global processedDataset
+    if processedDataset is None or processedDataset.empty:
+        return []
+
+    filtered = processedDataset[processedDataset["Name"] == exercise_name]
+    if filtered.empty:
+        return []
+
+    history_list = []
+    recent_rows = filtered.tail(15)
+    for idx, row in recent_rows.iterrows():
+        raw_time = row.get("Time", "")
+        date_str = str(raw_time).split()[0] if pd.notna(raw_time) and str(raw_time).strip() else f"Session #{idx}"
+        e1rm_val = round(float(row.get("e1RM", 0.0)), 2)
+        weight_val = round(float(row.get("Weight", 0.0)), 1) if "Weight" in row and pd.notna(row["Weight"]) else 0.0
+        reps_val = int(row.get("Reps", 0)) if "Reps" in row and pd.notna(row["Reps"]) else 0
+
+        history_list.append(
+            {
+                "date": date_str,
+                "e1RM": e1rm_val,
+                "weight": weight_val,
+                "reps": reps_val,
+            }
+        )
+    return history_list
+
+
+@app.get("/api/history")
+async def getHistory(exercise: str) -> dict[str, Any]:
+    """Get Exercise History
+
+    Retrieves historical e1RM, weight, and reps data points for the specified exercise.
+    """
+    return {"history": _get_exercise_history(exercise)}
+
+
 @app.post("/api/predict")
 async def predictTarget(request: PredictionRequest) -> dict[str, Any]:
     """Predict Target - Predict e1RM Using Trained Model
@@ -257,6 +296,7 @@ async def predictTarget(request: PredictionRequest) -> dict[str, Any]:
             "prediction": predictedVal,
             "target": "e1RM",
             "modelUsed": bestModelName,
+            "history": _get_exercise_history(request.Name),
         }
 
     except Exception as e:
@@ -277,11 +317,8 @@ async def predictSimple(request: SimplePredictionRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="No model has been trained yet. Please train the model first.")
 
     try:
-        # Calculate current set e1RM (Epley formula: weight * (1 + reps / 30))
-        current_set_e1RM = request.Weight * (1.0 + request.Reps / 30.0)
-
-        # Default fallbacks
-        lag1, lag2, lag3 = current_set_e1RM, current_set_e1RM, current_set_e1RM
+        # Default fallbacks for historical lags if exercise history is not found
+        lag1, lag2, lag3 = 200.0, 195.0, 190.0
         timeSinceLastWorkout = 2.0
         timeSinceLastSameExercise = 7.0
         calculated_age = request.current_age if request.current_age is not None else 24.0
@@ -308,9 +345,9 @@ async def predictSimple(request: SimplePredictionRequest) -> dict[str, Any]:
             if not exercise_rows.empty:
                 recent_ex = exercise_rows.iloc[-1]
                 if "e1RMLag1" in recent_ex:
-                    lag1 = float(recent_ex.get("e1RMLag1", current_set_e1RM))
-                    lag2 = float(recent_ex.get("e1RMLag2", current_set_e1RM))
-                    lag3 = float(recent_ex.get("e1RMLag3", current_set_e1RM))
+                    lag1 = float(recent_ex.get("e1RMLag1", 200.0))
+                    lag2 = float(recent_ex.get("e1RMLag2", 195.0))
+                    lag3 = float(recent_ex.get("e1RMLag3", 190.0))
                 if "timeSinceLastSameExercise" in recent_ex:
                     timeSinceLastSameExercise = float(recent_ex.get("timeSinceLastSameExercise", 7.0))
 
@@ -324,6 +361,10 @@ async def predictSimple(request: SimplePredictionRequest) -> dict[str, Any]:
 
             if "Age" in latest_row:
                 calculated_age = float(latest_row["Age"])
+
+        # Override Body Weight if passed directly in request
+        if request.body_weight is not None and request.body_weight > 0:
+            biometrics["Body Weight"] = float(request.body_weight)
 
         # Override age if birthday or current_age passed directly in request
         if request.birthday:
@@ -369,8 +410,8 @@ async def predictSimple(request: SimplePredictionRequest) -> dict[str, Any]:
             "prediction": predictedVal,
             "target": "e1RM",
             "modelUsed": bestModelName,
+            "history": _get_exercise_history(request.Name),
             "derivedFeatures": {
-                "currentSete1RM": current_set_e1RM,
                 "calculatedAge": calculated_age,
                 "e1RMLag1": lag1,
                 "e1RMLag2": lag2,
