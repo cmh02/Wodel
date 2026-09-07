@@ -267,9 +267,9 @@ if __name__ == "__main__":
 
     # Load, clean, and engineer features using the integrated Pipeline
     data = DataPipeline.run(
-        filePath="data/strong_workouts.csv", 
-        biometricsFilePath="data/renpho.csv", 
-        birthday="2002-05-14", 
+        filePath="data/strong_workouts.csv",
+        biometricsFilePath="data/renpho.csv",
+        birthday="2002-05-14",
         current_age=24
     )
 

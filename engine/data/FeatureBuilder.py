@@ -171,7 +171,9 @@ class FeatureBuilder:
             birth_year = int(today.year - current_age)
             # Default to Jan 1st of that birth year
             birth_date = pd.Timestamp(year=birth_year, month=1, day=1)
-            logger.info(f"Birthday not provided. Estimated birth year as {birth_year} based on current_age {current_age}.")
+            logger.info(
+                f"Birthday not provided. Estimated birth year as {birth_year} based on current_age {current_age}."
+            )
 
         # Convert Time column to datetime series
         workout_times = pd.to_datetime(df["Time"])
