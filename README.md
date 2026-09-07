@@ -13,3 +13,34 @@ Wodel seeks to fix this by taking the model to the user. Instead of asking the u
 ## Getting Started & Contributing
 
 To set up your local development environment using `uv`, run tasks, or learn about our project coding standards, please check out the [Contributing Guide](file:///CONTRIBUTING.md).
+
+## Application Startup (Development)
+
+To run the application locally in development mode, both the Python FastAPI backend and the Vite React frontend need to be running.
+
+### Option 1: Quick Startup Script (Recommended)
+
+Run the included development script from the project root:
+
+```bash
+./devstart.sh
+```
+
+This starts both the FastAPI backend (`http://localhost:8000`) and the React frontend (`http://localhost:5173`) concurrently. Press `Ctrl+C` in the terminal to cleanly terminate both servers.
+
+### Option 2: Manual Startup
+
+If you prefer to run the backend and frontend in separate terminal windows:
+
+1. **Backend Server (FastAPI)**:
+   From the project root:
+   ```bash
+   uv run uvicorn engine.server:app --reload --port 8000
+   ```
+
+2. **Frontend App (React / Vite)**:
+   In a separate terminal window:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
