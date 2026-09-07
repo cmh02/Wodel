@@ -270,7 +270,7 @@ if __name__ == "__main__":
         filePath="data/strong_workouts.csv",
         biometricsFilePath="data/renpho.csv",
         birthday="2002-05-14",
-        current_age=24
+        current_age=24,
     )
 
     finder = ModelFinder(target_column="e1RM")
