@@ -1,13 +1,13 @@
 import { useState, useRef } from 'react';
 
-function E1RMChart({ history = [], predictedE1RM, exerciseName, targetReps = 8 }) {
+function E1RMChart({ history = [], predictedE1RM, chainedPredictions = [], exerciseName, targetReps = 8 }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [selectedRepCount, setSelectedRepCount] = useState(targetReps);
   const svgRef = useRef(null);
 
   // Format date strings like "2026-08-20" -> "Aug 20"
   const formatDateLabel = (dateStr) => {
-    if (!dateStr || dateStr.startsWith('Session') || dateStr.startsWith('Next')) return dateStr;
+    if (!dateStr || dateStr.startsWith('Session') || dateStr.startsWith('Next') || dateStr.startsWith('Predicted')) return dateStr;
     try {
       const parts = dateStr.split('-');
       if (parts.length >= 3) {
@@ -24,7 +24,7 @@ function E1RMChart({ history = [], predictedE1RM, exerciseName, targetReps = 8 }
     }
   };
 
-  // Combine historical points + predicted point into a unified dataset
+  // Combine historical points + predicted point(s) into a unified dataset
   const historicalPoints = (history && history.length > 0)
     ? history.map((pt, i) => ({
         id: `hist-${i}`,
@@ -42,17 +42,31 @@ function E1RMChart({ history = [], predictedE1RM, exerciseName, targetReps = 8 }
         { id: 'mock-4', label: 'Aug 10', e1RM: 220, weight: 185, reps: 8, isPrediction: false }
       ];
 
-  // Append prediction point if available
   const allPoints = [...historicalPoints];
-  if (predictedE1RM != null) {
+  if (chainedPredictions && chainedPredictions.length > 0) {
+    chainedPredictions.forEach((predVal, idx) => {
+      const step = idx + 1;
+      allPoints.push({
+        id: `pred-point-${idx}`,
+        label: `+${step} Wk`,
+        rawDate: `Predicted Workout (+${step})`,
+        e1RM: Number(predVal),
+        weight: null,
+        reps: null,
+        isPrediction: true,
+        stepIndex: step
+      });
+    });
+  } else if (predictedE1RM != null) {
     allPoints.push({
-      id: 'pred-point',
-      label: 'Predicted',
-      rawDate: 'Next Workout',
+      id: 'pred-point-0',
+      label: '+1 Wk',
+      rawDate: 'Predicted Workout (+1)',
       e1RM: Number(predictedE1RM),
       weight: null,
       reps: null,
-      isPrediction: true
+      isPrediction: true,
+      stepIndex: 1
     });
   }
 
@@ -63,7 +77,9 @@ function E1RMChart({ history = [], predictedE1RM, exerciseName, targetReps = 8 }
     return e1rm / (1.0 + reps / 30.0);
   };
 
-  const activePredictedE1RM = predictedE1RM || (allPoints.length > 0 ? allPoints[allPoints.length - 1].e1RM : 200);
+  const activePredictedE1RM = (chainedPredictions && chainedPredictions.length > 0)
+    ? Number(chainedPredictions[0])
+    : (predictedE1RM != null ? Number(predictedE1RM) : (allPoints.length > 0 ? allPoints[allPoints.length - 1].e1RM : 200));
   const predictedWeightForTarget = calculateWeightForReps(activePredictedE1RM, selectedRepCount);
 
   // SVG Chart Layout Math
@@ -311,7 +327,7 @@ function E1RMChart({ history = [], predictedE1RM, exerciseName, targetReps = 8 }
             )}
             {hoveredPoint.isPrediction && (
               <div className="tooltip-sub prediction-sub">
-                ⚡ Model Predicted Target
+                ⚡ Model Predicted Target {hoveredPoint.stepIndex ? `(+${hoveredPoint.stepIndex} Workout)` : ''}
               </div>
             )}
           </div>

@@ -16,6 +16,7 @@ function App() {
 
   // Prediction Mode State: 'simple' | 'advanced'
   const [predictionMode, setPredictionMode] = useState('simple');
+  const [chainingCount, setChainingCount] = useState(3);
 
   // Simple Mode Prediction Inputs
   const [simpleInputs, setSimpleInputs] = useState({
@@ -155,9 +156,13 @@ function App() {
       ? {
           ...simpleInputs,
           birthday: userBirthday,
-          current_age: parseFloat(userCurrentAge) || 24.0
+          current_age: parseFloat(userCurrentAge) || 24.0,
+          chaining: chainingCount
         }
-      : predictionInputs;
+      : {
+          ...predictionInputs,
+          chaining: chainingCount
+        };
 
     try {
       const response = await fetch(`${API_HOST}${endpoint}`, {
@@ -423,17 +428,36 @@ function App() {
                   </div>
                 </div>
 
-                <div className="input-group">
-                  <label htmlFor="simple-reps">Target # of Reps</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    id="simple-reps"
-                    className="input-control"
-                    value={simpleInputs.Reps}
-                    onChange={(e) => handleSimpleInputChange("Reps", parseInt(e.target.value) || 1)}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="input-group">
+                    <label htmlFor="simple-reps">Target # of Reps</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      id="simple-reps"
+                      className="input-control"
+                      value={simpleInputs.Reps}
+                      onChange={(e) => handleSimpleInputChange("Reps", parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+
+                  {/* Chaining Horizon Slider */}
+                  <div className="slider-container">
+                    <div className="slider-header">
+                      <label htmlFor="simple-chaining">Prediction Horizon (Chaining)</label>
+                      <span className="slider-badge">+{chainingCount} Workouts</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      id="simple-chaining"
+                      className="range-input"
+                      value={chainingCount}
+                      onChange={(e) => setChainingCount(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -756,6 +780,23 @@ function App() {
                       onChange={(e) => handleAdvancedInputChange("Metabolic_Age", parseFloat(e.target.value) || 0)}
                     />
                   </div>
+
+                  {/* Chaining Horizon Slider for Advanced Mode */}
+                  <div className="slider-container" style={{ marginTop: '15px' }}>
+                    <div className="slider-header">
+                      <label htmlFor="advanced-chaining">Prediction Horizon (Chaining)</label>
+                      <span className="slider-badge">+{chainingCount} Workouts</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      id="advanced-chaining"
+                      className="range-input"
+                      value={chainingCount}
+                      onChange={(e) => setChainingCount(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -793,6 +834,7 @@ function App() {
               <E1RMChart
                 history={predictionResult.history}
                 predictedE1RM={predictionResult.prediction}
+                chainedPredictions={predictionResult.chainedPredictions}
                 exerciseName={predictionMode === 'simple' ? simpleInputs.Name : predictionInputs.Name}
                 targetReps={predictionMode === 'simple' ? simpleInputs.Reps : 8}
               />
@@ -802,10 +844,6 @@ function App() {
                 <div className="derived-card">
                   <h4 className="derived-title">✨ Auto-Derived & Historical Lookups Used</h4>
                   <div className="derived-grid">
-                    <div className="derived-item">
-                      <span className="derived-label">Calculated Age</span>
-                      <span className="derived-value">{predictionResult.derivedFeatures.calculatedAge.toFixed(1)} yrs</span>
-                    </div>
                     <div className="derived-item">
                       <span className="derived-label">Calculated Age</span>
                       <span className="derived-value">{predictionResult.derivedFeatures.calculatedAge.toFixed(1)} yrs</span>

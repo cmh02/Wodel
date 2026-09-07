@@ -76,6 +76,7 @@ class PredictionRequest(BaseModel):
     Protein: float
     BMR: float
     Metabolic_Age: float
+    chaining: int = 3
 
 
 class SimplePredictionRequest(BaseModel):
@@ -91,6 +92,7 @@ class SimplePredictionRequest(BaseModel):
     birthday: str | None = None
     current_age: float | None = None
     body_weight: float | None = None
+    chaining: int = 3
 
 
 @app.post("/api/train")
@@ -234,6 +236,37 @@ def _get_exercise_history(exercise_name: str) -> list[dict[str, Any]]:
     return history_list
 
 
+def _run_chained_prediction(
+    pipeline: Any,
+    base_input_data: dict[str, Any],
+    chaining_count: int = 3,
+) -> list[float]:
+    """Execute prediction chaining by iteratively updating historical lags."""
+    chained_results: list[float] = []
+    current_input = {k: list(v) for k, v in base_input_data.items()}
+
+    l1 = float(current_input["e1RMLag1"][0])
+    l2 = float(current_input["e1RMLag2"][0])
+    l3 = float(current_input["e1RMLag3"][0])
+
+    steps = max(1, min(10, chaining_count))
+    for _ in range(steps):
+        current_input["e1RMLag1"] = [l1]
+        current_input["e1RMLag2"] = [l2]
+        current_input["e1RMLag3"] = [l3]
+
+        test_df = pd.DataFrame(current_input)
+        pred_val = float(pipeline.predict(test_df)[0])
+        chained_results.append(round(pred_val, 2))
+
+        # Shift lags down one position for next chained step
+        l3 = l2
+        l2 = l1
+        l1 = pred_val
+
+    return chained_results
+
+
 @app.get("/api/history")
 async def getHistory(exercise: str) -> dict[str, Any]:
     """Get Exercise History
@@ -289,11 +322,11 @@ async def predictTarget(request: PredictionRequest) -> dict[str, Any]:
             "Metabolic Age": [request.Metabolic_Age],
         }
 
-        testRow = pd.DataFrame(inputData)
-        predictedVal = float(trainedPipeline.predict(testRow)[0])
+        chained_preds = _run_chained_prediction(trainedPipeline, inputData, request.chaining)
 
         return {
-            "prediction": predictedVal,
+            "prediction": chained_preds[0],
+            "chainedPredictions": chained_preds,
             "target": "e1RM",
             "modelUsed": bestModelName,
             "history": _get_exercise_history(request.Name),
@@ -403,11 +436,11 @@ async def predictSimple(request: SimplePredictionRequest) -> dict[str, Any]:
             "Metabolic Age": [biometrics["Metabolic Age"]],
         }
 
-        testRow = pd.DataFrame(inputData)
-        predictedVal = float(trainedPipeline.predict(testRow)[0])
+        chained_preds = _run_chained_prediction(trainedPipeline, inputData, request.chaining)
 
         return {
-            "prediction": predictedVal,
+            "prediction": chained_preds[0],
+            "chainedPredictions": chained_preds,
             "target": "e1RM",
             "modelUsed": bestModelName,
             "history": _get_exercise_history(request.Name),
