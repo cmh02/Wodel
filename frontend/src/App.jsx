@@ -360,28 +360,7 @@ function App() {
             {predictionMode === 'simple' ? (
               /* --- SIMPLE PREDICTION FORM --- */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-                  <div className="input-group">
-                    <label htmlFor="simple-birthday">Birthday</label>
-                    <input
-                      type="date"
-                      id="simple-birthday"
-                      className="input-control"
-                      value={userBirthday}
-                      onChange={(e) => handleBirthdayChange(e.target.value)}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label htmlFor="simple-age">Current Age</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      id="simple-age"
-                      className="input-control"
-                      value={userCurrentAge}
-                      onChange={(e) => handleAgeChange(e.target.value)}
-                    />
-                  </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   <div className="input-group">
                     <label htmlFor="simple-body-weight">Body Weight (lbs)</label>
                     <input
@@ -393,20 +372,19 @@ function App() {
                       onChange={(e) => handleSimpleInputChange("body_weight", parseFloat(e.target.value) || 0)}
                     />
                   </div>
-                </div>
-
-                <div className="input-group">
-                  <label htmlFor="simple-name">Exercise Name</label>
-                  <select
-                    id="simple-name"
-                    className="input-control"
-                    value={simpleInputs.Name}
-                    onChange={(e) => handleSimpleInputChange("Name", e.target.value)}
-                  >
-                    {commonExercises.map(ex => (
-                      <option key={ex} value={ex}>{ex}</option>
-                    ))}
-                  </select>
+                  <div className="input-group">
+                    <label htmlFor="simple-name">Exercise Name</label>
+                    <select
+                      id="simple-name"
+                      className="input-control"
+                      value={simpleInputs.Name}
+                      onChange={(e) => handleSimpleInputChange("Name", e.target.value)}
+                    >
+                      {commonExercises.map(ex => (
+                        <option key={ex} value={ex}>{ex}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
